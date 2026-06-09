@@ -290,15 +290,31 @@
     @page { size: A4 portrait; margin: 10mm 12mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
-    body { background: white; }
-    header, .tabs, #form-section, #history-section { display: none !important; }
-    #print-area { display: block !important; }
+    body * { visibility: hidden; }
+
+    #print-view, #print-view * { visibility: visible; }
+
+    #print-view {
+      display: block !important;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
 
     .a4 {
       border: none;
+      border-radius: 0;
       width: 100%;
+      font-size: 13px;
     }
+
     .a4-band { background: #e8f0f8 !important; }
+    .a4-words-row { background: #fffbe6 !important; }
+    .a4-table th { background: #1a3a5c !important; color: white !important; }
+    .a4-table tfoot td { background: #f0f5fa !important; }
+    .a4-info-strip { background: #f8fafc !important; }
   }
 </style>
 </head>
