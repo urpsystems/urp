@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>URP Purchase — Regal Plastics</title>
+<title>URP Purchase</title>
 <style>
   :root {
     --blue: #1a3a5c;
@@ -17,6 +17,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f4f7; color: #1a1a1a; }
 
+  /* PIN */
   #pin-screen {
     min-height: 100vh; display: flex; align-items: center;
     justify-content: center; background: #f2f4f7; padding: 20px;
@@ -48,21 +49,55 @@
   }
   .pin-error { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
 
+  /* COMPANY SELECTOR */
+  #company-screen {
+    min-height: 100vh; display: none; align-items: center;
+    justify-content: center; background: #f2f4f7; padding: 20px;
+  }
+  .company-card {
+    background: white; border-radius: 16px; border: 1px solid var(--border);
+    padding: 28px 24px; width: 100%; max-width: 380px;
+  }
+  .company-card h2 { font-size: 18px; font-weight: 700; color: var(--blue); margin-bottom: 6px; }
+  .company-card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .company-list { display: flex; flex-direction: column; gap: 10px; }
+  .company-btn {
+    width: 100%; padding: 14px 16px; background: white;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    text-align: left; cursor: pointer; font-family: inherit;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .company-btn:hover, .company-btn:active { border-color: var(--blue); background: #e8f0f8; }
+  .company-btn-name { font-size: 14px; font-weight: 700; color: var(--blue); margin-bottom: 2px; }
+  .company-btn-gst { font-size: 11px; color: var(--muted); }
+  .back-btn {
+    width: 100%; margin-top: 12px; padding: 10px;
+    background: none; border: none; color: var(--muted);
+    font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+
+  /* HEADER */
   header {
     background: linear-gradient(135deg, #1a3a5c, #2d6a9f);
     color: white; padding: 14px 20px;
     position: sticky; top: 0; z-index: 10;
     display: flex; justify-content: space-between; align-items: center;
   }
-  header h1 { font-size: 16px; font-weight: 700; }
+  header h1 { font-size: 15px; font-weight: 700; }
   header p { font-size: 11px; opacity: 0.7; margin-top: 1px; }
   .hbtn {
     background: rgba(255,255,255,0.15); border: none; color: white;
     padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
   }
+  .hbtn-co {
+    background: rgba(255,255,255,0.15); border: none; color: white;
+    padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-right: 6px;
+  }
 
+  /* BODY */
   .body { padding: 16px; max-width: 480px; margin: 0 auto; }
 
+  /* TABS */
   .tabs {
     display: flex; background: white; border-radius: var(--radius);
     border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden;
@@ -74,6 +109,7 @@
   }
   .tab.active { color: var(--blue); border-bottom-color: var(--blue); background: #e8f0f8; }
 
+  /* CARDS */
   .card {
     background: white; border-radius: var(--radius);
     border: 1px solid var(--border); margin-bottom: 14px; overflow: hidden;
@@ -86,6 +122,7 @@
   }
   .card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
 
+  /* FIELDS */
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
   .field input, .field select, .field textarea {
@@ -103,6 +140,7 @@
   }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+  /* AUTOCOMPLETE */
   .ac-wrap { position: relative; }
   .ac-list {
     position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
@@ -111,13 +149,13 @@
   }
   .ac-item {
     padding: 10px 13px; font-size: 14px; cursor: pointer;
-    display: flex; justify-content: space-between;
-    border-bottom: 1px solid #f0f0f0;
+    display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0;
   }
   .ac-item:last-child { border-bottom: none; }
   .ac-item:hover, .ac-item:active { background: #e8f0f8; }
   .ac-pin { font-size: 12px; color: var(--muted); }
 
+  /* SUMMARY */
   .summary-card {
     background: white; border: 1px solid #b0d9c0;
     border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
@@ -126,6 +164,7 @@
   .summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; border-bottom: 1px solid #e0f0e8; }
   .summary-row:last-child { border: none; font-size: 15px; font-weight: 700; color: var(--green); padding-top: 8px; }
 
+  /* WORDS */
   .words-box {
     background: #fffbe6; border: 1px solid #e6d400;
     border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px;
@@ -133,6 +172,7 @@
   .words-label { font-size: 11px; font-weight: 700; color: #7a6000; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
   .words-text { font-size: 13px; color: #3d3000; font-style: italic; font-weight: 500; line-height: 1.5; }
 
+  /* BUTTONS */
   .btn-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
   .btn {
     width: 100%; padding: 14px; border-radius: var(--radius);
@@ -150,14 +190,15 @@
   .btn-del-sm  { background: #fdecea; color: #c0392b; }
   .btn-pdf-sm  { background: #e6f4ed; color: #1a6641; }
 
+  /* SUCCESS BOX */
   .success-box {
     background: #e6f4ed; border: 1px solid #b0d9c0;
-    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
-    display: none;
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; display: none;
   }
   .success-box h3 { font-size: 14px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
   .success-box p { font-size: 13px; color: #2a5c3a; }
 
+  /* HISTORY */
   .hist-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
   .hist-item {
     background: white; border-radius: var(--radius);
@@ -169,11 +210,10 @@
   .hist-name { font-size: 13px; color: #333; margin-bottom: 2px; }
   .hist-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
   .hist-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .hist-toolbar {
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
-  }
+  .hist-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .hist-count { font-size: 13px; color: var(--muted); }
 
+  /* MONTH GROUPS */
   .month-group { margin-bottom: 10px; }
   .month-header {
     background: white; border-radius: var(--radius); border: 1px solid var(--border);
@@ -186,6 +226,7 @@
   .month-chevron { font-size: 12px; color: var(--muted); }
   .month-body { padding: 6px 0 0 0; display: flex; flex-direction: column; gap: 8px; }
 
+  /* TOAST */
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     background: #1a1a1a; color: white; padding: 10px 20px;
@@ -199,6 +240,7 @@
 </head>
 <body>
 
+<!-- PIN SCREEN -->
 <div id="pin-screen">
   <div class="pin-card">
     <div class="pin-logo">
@@ -206,21 +248,37 @@
         <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
     </div>
-    <h2>Regal Plastics</h2>
-    <p>URP Purchase System</p>
+    <h2>URP Purchase</h2>
+    <p>Enter PIN to continue</p>
     <input type="password" class="pin-input" id="pinInput" placeholder="• • • •" inputmode="numeric" maxlength="6" />
     <button type="button" class="pin-btn" onclick="doLogin()">Unlock</button>
     <div class="pin-error" id="pinError">Incorrect PIN. Try again.</div>
   </div>
 </div>
 
+<!-- COMPANY SELECTOR -->
+<div id="company-screen">
+  <div class="company-card">
+    <h2>Select Company</h2>
+    <p>Which company are you invoicing for?</p>
+    <div class="company-list" id="companyList">
+      <div class="loading-msg">Loading...</div>
+    </div>
+    <button type="button" class="back-btn" onclick="doLogout()">← Back to PIN</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
 <div id="app" style="display:none">
   <header>
     <div>
-      <h1>URP Purchase</h1>
-      <p>Regal Plastics · Hubballi</p>
+      <h1 id="headerTitle">URP Purchase</h1>
+      <p id="headerSub">Loading...</p>
     </div>
-    <button type="button" class="hbtn" onclick="doLogout()">Logout</button>
+    <div style="display:flex;align-items:center">
+      <button type="button" class="hbtn-co" onclick="switchCompany()" title="Switch company">⇄ Switch</button>
+      <button type="button" class="hbtn" onclick="doLogout()">Logout</button>
+    </div>
   </header>
 
   <div class="body">
@@ -229,6 +287,7 @@
       <button type="button" class="tab"        id="tab-hist" onclick="showTab('hist')">History</button>
     </div>
 
+    <!-- NEW INVOICE -->
     <div id="sec-new">
       <div class="card">
         <div class="card-head">Invoice Details</div>
@@ -351,6 +410,7 @@
       </div>
     </div>
 
+    <!-- HISTORY -->
     <div id="sec-hist" style="display:none">
       <div class="hist-toolbar">
         <div class="hist-count" id="hist-count"></div>
@@ -371,6 +431,8 @@ let currentInvoiceId = null;
 let editMode = false;
 let lastInvoiceData = null;
 let allInvoices = [];
+let currentCompany = null;
+let allCompanies = [];
 
 const PLACES = [
   {n:'Hubballi',p:'580026'},{n:'Gadag',p:'582102'},
@@ -402,6 +464,8 @@ const PLACES = [
   {n:'Sindhanur',p:'584128'},{n:'Manvi',p:'584123'},
   {n:'Gokak',p:'591307'},{n:'Chikodi',p:'591201'},
   {n:'Athani',p:'591304'},{n:'Nippani',p:'591237'},
+  {n:'Bommasandra',p:'560099'},{n:'Anekkal',p:'560099'},
+  {n:'Avarage',p:'577005'},{n:'Lokikere',p:'577005'},
 ];
 
 function filterPlaces() {
@@ -463,6 +527,7 @@ function toWords(amt) {
   return 'Rupees '+n2w(r)+(p?' and '+n2w(p)+' Paise':'')+' Only';
 }
 
+// ── AUTH ─────────────────────────────────────────────────
 async function doLogin() {
   const pin = document.getElementById('pinInput').value.trim();
   if (!pin) return;
@@ -473,7 +538,7 @@ async function doLogin() {
     const d = await r.json();
     if (d.success) {
       sessionStorage.setItem('urp_auth','1');
-      showApp();
+      showCompanyScreen();
     } else {
       document.getElementById('pinError').style.display = 'block';
       document.getElementById('pinInput').value = '';
@@ -483,41 +548,75 @@ async function doLogin() {
     document.getElementById('pinError').style.display = 'block';
   }
 }
-
-function showApp() {
-  document.getElementById('pin-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('invoiceDate').value = localDate();
-  loadNextNumber();
-  recalc();
-}
+document.getElementById('pinInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
 function doLogout() {
   sessionStorage.removeItem('urp_auth');
+  sessionStorage.removeItem('urp_company');
+  currentCompany = null;
   document.getElementById('pin-screen').style.display = 'flex';
+  document.getElementById('company-screen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
   document.getElementById('pinInput').value = '';
   document.getElementById('pinError').style.display = 'none';
 }
 
-document.getElementById('pinInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-
-function showTab(t) {
-  document.getElementById('sec-new').style.display  = t==='new'  ? 'block':'none';
-  document.getElementById('sec-hist').style.display = t==='hist' ? 'block':'none';
-  document.getElementById('tab-new').classList.toggle('active',  t==='new');
-  document.getElementById('tab-hist').classList.toggle('active', t==='hist');
-  if (t==='hist') loadHistory();
+function switchCompany() {
+  sessionStorage.removeItem('urp_company');
+  currentCompany = null;
+  document.getElementById('app').style.display = 'none';
+  showCompanyScreen();
 }
 
+// ── COMPANY SCREEN ───────────────────────────────────────
+async function showCompanyScreen() {
+  document.getElementById('pin-screen').style.display = 'none';
+  document.getElementById('company-screen').style.display = 'flex';
+
+  if (allCompanies.length === 0) {
+    try {
+      const r = await fetch(`${API}/companies`);
+      allCompanies = await r.json();
+    } catch(e) {
+      document.getElementById('companyList').innerHTML = '<div class="empty">Could not load companies.</div>';
+      return;
+    }
+  }
+
+  document.getElementById('companyList').innerHTML = allCompanies.map(co => `
+    <button type="button" class="company-btn" onclick="selectCompany('${co.id}')">
+      <div class="company-btn-name">${co.name}</div>
+      <div class="company-btn-gst">GST: ${co.gst}</div>
+    </button>
+  `).join('');
+}
+
+function selectCompany(companyId) {
+  currentCompany = allCompanies.find(c => c.id === companyId);
+  sessionStorage.setItem('urp_company', JSON.stringify(currentCompany));
+  document.getElementById('company-screen').style.display = 'none';
+  showApp();
+}
+
+function showApp() {
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('headerTitle').textContent = currentCompany.name;
+  document.getElementById('headerSub').textContent = 'URP Purchase · ' + (currentCompany.address.split('\n')[0]);
+  document.getElementById('invoiceDate').value = localDate();
+  loadNextNumber();
+  recalc();
+}
+
+// ── NEXT NUMBER ──────────────────────────────────────────
 async function loadNextNumber() {
   try {
-    const r = await fetch(`${API}/invoice/next-number`);
+    const r = await fetch(`${API}/invoice/next-number/${currentCompany.id}`);
     const d = await r.json();
     document.getElementById('invoiceNo').value = d.invoice_number;
   } catch(e) { document.getElementById('invoiceNo').value = 'Error'; }
 }
 
+// ── RECALC ───────────────────────────────────────────────
 function recalc() {
   const qty  = parseFloat(document.getElementById('quantity').value)||0;
   const rate = parseFloat(document.getElementById('rate').value)||0;
@@ -528,6 +627,7 @@ function recalc() {
   document.getElementById('amountWords').textContent = amt>0 ? toWords(amt) : '—';
 }
 
+// ── GENERATE ─────────────────────────────────────────────
 async function generateInvoice() {
   const qty  = parseFloat(document.getElementById('quantity').value)||0;
   const rate = parseFloat(document.getElementById('rate').value)||0;
@@ -550,6 +650,7 @@ async function generateInvoice() {
   const words = toWords(amt);
 
   const body = {
+    company_id: currentCompany.id,
     invoice_date:date, consignor_name:name, consignor_address:addr,
     place, pincode:pin, state, state_code:sc, vehicle_number:veh,
     product_desc:desc, hsn_code:hsn, quantity:qty, rate, amount:amt, amount_words:words
@@ -593,6 +694,7 @@ async function generateInvoice() {
   btn.textContent = 'Generate & Save Invoice';
 }
 
+// ── DOWNLOAD PDF ─────────────────────────────────────────
 async function downloadPDF(invData) {
   const data = invData || lastInvoiceData;
   if (!data) { toast('No invoice to download'); return; }
@@ -617,6 +719,7 @@ async function downloadPDF(invData) {
   if (btn) { btn.disabled=false; btn.textContent='Download PDF'; }
 }
 
+// ── RESET ─────────────────────────────────────────────────
 function resetForm() {
   ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
     document.getElementById(id).value = '';
@@ -633,11 +736,21 @@ function resetForm() {
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+// ── TABS ─────────────────────────────────────────────────
+function showTab(t) {
+  document.getElementById('sec-new').style.display  = t==='new'  ? 'block':'none';
+  document.getElementById('sec-hist').style.display = t==='hist' ? 'block':'none';
+  document.getElementById('tab-new').classList.toggle('active',  t==='new');
+  document.getElementById('tab-hist').classList.toggle('active', t==='hist');
+  if (t==='hist') loadHistory();
+}
+
+// ── HISTORY ──────────────────────────────────────────────
 async function loadHistory() {
   const list = document.getElementById('hist-list');
   list.innerHTML = '<div class="loading-msg">Loading...</div>';
   try {
-    const r = await fetch(`${API}/invoices`);
+    const r = await fetch(`${API}/invoices/${currentCompany.id}`);
     allInvoices = await r.json();
     document.getElementById('hist-count').textContent = `${allInvoices.length} invoices`;
     if (!allInvoices.length) { list.innerHTML='<div class="empty">No invoices yet.</div>'; return; }
@@ -653,7 +766,6 @@ async function loadHistory() {
     });
 
     const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
-
     list.innerHTML = sortedKeys.map((key, idx) => {
       const g = groups[key];
       const isOpen = idx === 0;
@@ -761,7 +873,7 @@ function downloadCSV() {
   const blob = new Blob([csv],{type:'text/csv'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href=url; a.download=`URP_Invoices_${new Date().getFullYear()}.csv`;
+  a.href=url; a.download=`URP_${currentCompany.name.replace(/\s+/g,'_')}_${new Date().getFullYear()}.csv`;
   a.click(); URL.revokeObjectURL(url);
   toast('CSV downloaded ✓');
 }
@@ -772,9 +884,20 @@ document.getElementById('productDesc').addEventListener('change', function() {
 ['quantity','rate'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
 document.getElementById('vehicleNo').addEventListener('input', function() { this.value = this.value.toUpperCase(); });
 
-// Auto-login if session exists
+// Auto-restore session
 if (sessionStorage.getItem('urp_auth') === '1') {
-  showApp();
+  const savedCompany = sessionStorage.getItem('urp_company');
+  if (savedCompany) {
+    currentCompany = JSON.parse(savedCompany);
+    allCompanies = [currentCompany];
+    fetch(`${API}/companies`).then(r=>r.json()).then(d=>{ allCompanies=d; });
+    showApp();
+  } else {
+    fetch(`${API}/companies`).then(r=>r.json()).then(d=>{
+      allCompanies = d;
+      showCompanyScreen();
+    });
+  }
 }
 </script>
 </body>
