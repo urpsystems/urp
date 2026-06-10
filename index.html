@@ -242,13 +242,15 @@
 
 <!-- PIN SCREEN -->
 <div id="pin-screen">
-  <div class="pin-card">
-    <div class="pin-logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+  <div class="pin-logo" style="width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#1a3a5c,#2d6a9f)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" style="width:36px;height:36px">
         <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
     </div>
-    <h2>URP Purchase</h2>
+    <div style="margin-bottom:6px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#2d6a9f;text-transform:uppercase;margin-bottom:4px">Unregistered Person Purchase</div>
+      <h2 style="font-size:26px;font-weight:800;color:#1a3a5c;letter-spacing:1px">URP Systems</h2>
+    </div>
     <p>Enter PIN to continue</p>
     <input type="password" class="pin-input" id="pinInput" placeholder="• • • •" inputmode="numeric" maxlength="6" />
     <button type="button" class="pin-btn" onclick="doLogin()">Unlock</button>
