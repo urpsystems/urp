@@ -15,11 +15,9 @@
     --muted: #666;
     --red: #c0392b;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a1a1a; }
 
-  /* ── LOGIN ── */
   #pin-screen {
     min-height: 100vh; display: flex; align-items: center;
     justify-content: center; background: #f8f9fa; padding: 20px;
@@ -40,13 +38,12 @@
   .pin-input:focus { outline: none; border-color: #0867cf; box-shadow: 0 0 0 3px rgba(8,103,207,0.1); }
   .pin-btn {
     width: 100%; padding: 14px;
-    background: linear-gradient(135deg, #0867cf, #054a99);
+    background: linear-gradient(135deg, #054a99, #0867cf);
     color: white; border: none; border-radius: 10px;
     font-size: 16px; font-weight: 700; cursor: pointer;
   }
   .pin-error { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
 
-  /* ── COMPANY SELECTOR ── */
   #company-screen {
     min-height: 100vh; display: none; align-items: center;
     justify-content: center; background: #f8f9fa; padding: 20px;
@@ -60,22 +57,21 @@
   .company-card h2 { font-size: 16px; font-weight: 700; color: #333; margin-bottom: 4px; text-align: center; }
   .company-card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; text-align: center; }
   .company-list { display: flex; flex-direction: column; gap: 10px; }
-
   .company-btn {
     width: 100%; padding: 14px 16px;
     border-radius: var(--radius); text-align: left;
     cursor: pointer; font-family: inherit; border: none;
     border-left: 5px solid transparent;
-    transition: transform 0.1s, box-shadow 0.1s;
+    transition: transform 0.1s;
   }
   .company-btn:active { transform: scale(0.98); }
-  .company-btn-regal  { background: #e8f2fd; border-left-color: #0867cf; }
-  .company-btn-rm     { background: #e8f5ec; border-left-color: #35a137; }
-  .company-btn-sm     { background: #eaecf0; border-left-color: #2e4a6e; }
+  .company-btn-regal { background: #e8f2fd; border-left-color: #0867cf; }
+  .company-btn-rm    { background: #e8f5ec; border-left-color: #35a137; }
+  .company-btn-sm    { background: #eaecf0; border-left-color: #2e4a6e; }
   .company-btn-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
-  .company-btn-regal .company-btn-name  { color: #054a99; }
-  .company-btn-rm    .company-btn-name  { color: #1e6e20; }
-  .company-btn-sm    .company-btn-name  { color: #1a2e45; }
+  .company-btn-regal .company-btn-name { color: #054a99; }
+  .company-btn-rm    .company-btn-name { color: #1e6e20; }
+  .company-btn-sm    .company-btn-name { color: #1a2e45; }
   .company-btn-gst { font-size: 11px; color: var(--muted); }
   .back-btn {
     width: 100%; margin-top: 14px; padding: 10px;
@@ -83,7 +79,6 @@
     font-size: 13px; cursor: pointer; font-family: inherit;
   }
 
-  /* ── HEADER ── */
   header {
     background: linear-gradient(135deg, var(--primary-dark), var(--primary));
     color: white; padding: 14px 20px;
@@ -101,10 +96,8 @@
     padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-right: 6px;
   }
 
-  /* ── BODY ── */
   .body { padding: 16px; max-width: 480px; margin: 0 auto; }
 
-  /* ── TABS ── */
   .tabs {
     display: flex; background: white; border-radius: var(--radius);
     border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden;
@@ -116,7 +109,6 @@
   }
   .tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-light); }
 
-  /* ── CARDS ── */
   .card {
     background: white; border-radius: var(--radius);
     border: 1px solid var(--border); margin-bottom: 14px; overflow: hidden;
@@ -129,7 +121,6 @@
   }
   .card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
 
-  /* ── FIELDS ── */
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
   .field input, .field select, .field textarea {
@@ -147,7 +138,6 @@
   }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-  /* ── AUTOCOMPLETE ── */
   .ac-wrap { position: relative; }
   .ac-list {
     position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
@@ -162,7 +152,6 @@
   .ac-item:hover, .ac-item:active { background: var(--primary-light); }
   .ac-pin { font-size: 12px; color: var(--muted); }
 
-  /* ── SUMMARY ── */
   .summary-card {
     background: white; border: 1px solid var(--primary-border);
     border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
@@ -171,7 +160,6 @@
   .summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; border-bottom: 1px solid #eaf2fc; }
   .summary-row:last-child { border: none; font-size: 15px; font-weight: 700; color: var(--primary-dark); padding-top: 8px; }
 
-  /* ── WORDS ── */
   .words-box {
     background: #fffbe6; border: 1px solid #e6d400;
     border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px;
@@ -179,7 +167,6 @@
   .words-label { font-size: 11px; font-weight: 700; color: #7a6000; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
   .words-text { font-size: 13px; color: #3d3000; font-style: italic; font-weight: 500; line-height: 1.5; }
 
-  /* ── BUTTONS ── */
   .btn-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
   .btn {
     width: 100%; padding: 14px; border-radius: var(--radius);
@@ -197,7 +184,6 @@
   .btn-del-sm  { background: #fdecea; color: #c0392b; }
   .btn-pdf-sm  { background: #e6f4ed; color: #1a6e20; }
 
-  /* ── SUCCESS BOX ── */
   .success-box {
     background: #e8f5ec; border: 1px solid #b0d9b8;
     border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; display: none;
@@ -205,7 +191,6 @@
   .success-box h3 { font-size: 14px; font-weight: 700; color: #1a6e20; margin-bottom: 4px; }
   .success-box p { font-size: 13px; color: #2a5c3a; }
 
-  /* ── HISTORY ── */
   .hist-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
   .hist-item {
     background: white; border-radius: var(--radius);
@@ -220,7 +205,6 @@
   .hist-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .hist-count { font-size: 13px; color: var(--muted); }
 
-  /* ── MONTH GROUPS ── */
   .month-group { margin-bottom: 10px; }
   .month-header {
     background: white; border-radius: var(--radius); border: 1px solid var(--border);
@@ -233,7 +217,6 @@
   .month-chevron { font-size: 12px; color: var(--muted); }
   .month-body { padding: 6px 0 0 0; display: flex; flex-direction: column; gap: 8px; }
 
-  /* ── TOAST ── */
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     background: var(--primary-dark); color: white; padding: 10px 20px;
@@ -276,7 +259,7 @@
   <header>
     <div>
       <h1 id="headerTitle">URP Systems</h1>
-      <p id="headerSub">URP Purchase</p>
+      <p id="headerSub"></p>
     </div>
     <div style="display:flex;align-items:center">
       <button type="button" class="hbtn-co" onclick="switchCompany()">⇄ Switch</button>
@@ -435,21 +418,14 @@ let allInvoices = [];
 let currentCompany = null;
 let allCompanies = [];
 
-// Colour schemes per company
 const SCHEMES = {
-  'Regal Plastics': {
-    primary: '#0867cf', dark: '#054a99', light: '#e8f2fd', border: '#b8d4f5'
-  },
-  'R M Equipments Pvt Ltd': {
-    primary: '#35a137', dark: '#1e6e20', light: '#e8f5ec', border: '#b0d9b8'
-  },
-  'S M Equipments': {
-    primary: '#4a6a8e', dark: '#2e4a6e', light: '#eaecf0', border: '#b8c8da'
-  }
+  'Regal Plastics':         { primary:'#0867cf', dark:'#054a99', light:'#e8f2fd', border:'#b8d4f5' },
+  'R M Equipments Pvt Ltd': { primary:'#35a137', dark:'#1e6e20', light:'#e8f5ec', border:'#b0d9b8' },
+  'S M Equipments':         { primary:'#4a6a8e', dark:'#2e4a6e', light:'#eaecf0', border:'#b8c8da' }
 };
 
-function applyScheme(companyName) {
-  const s = SCHEMES[companyName] || SCHEMES['Regal Plastics'];
+function applyScheme(name) {
+  const s = SCHEMES[name] || SCHEMES['Regal Plastics'];
   const r = document.documentElement.style;
   r.setProperty('--primary',        s.primary);
   r.setProperty('--primary-dark',   s.dark);
@@ -458,9 +434,9 @@ function applyScheme(companyName) {
 }
 
 const COMPANY_CLASSES = {
-  'Regal Plastics':       'company-btn-regal',
+  'Regal Plastics':         'company-btn-regal',
   'R M Equipments Pvt Ltd': 'company-btn-rm',
-  'S M Equipments':       'company-btn-sm'
+  'S M Equipments':         'company-btn-sm'
 };
 
 const PLACES = [
@@ -604,7 +580,7 @@ async function showCompanyScreen() {
       const r = await fetch(`${API}/companies`);
       allCompanies = await r.json();
     } catch(e) {
-      document.getElementById('companyList').innerHTML = '<div class="empty">Could not load companies.</div>';
+      document.getElementById('companyList').innerHTML = '<div class="empty">Could not load.</div>';
       return;
     }
   }
@@ -614,13 +590,12 @@ async function showCompanyScreen() {
       <button type="button" class="company-btn ${cls}" onclick="selectCompany('${co.id}')">
         <div class="company-btn-name">${co.name}</div>
         <div class="company-btn-gst">GST: ${co.gst}</div>
-      </button>
-    `;
+      </button>`;
   }).join('');
 }
 
-function selectCompany(companyId) {
-  currentCompany = allCompanies.find(c => c.id === companyId);
+function selectCompany(id) {
+  currentCompany = allCompanies.find(c => c.id === id);
   sessionStorage.setItem('urp_company', JSON.stringify(currentCompany));
   applyScheme(currentCompany.name);
   document.getElementById('company-screen').style.display = 'none';
@@ -631,7 +606,7 @@ function showApp() {
   applyScheme(currentCompany.name);
   document.getElementById('app').style.display = 'block';
   document.getElementById('headerTitle').textContent = currentCompany.name;
-  document.getElementById('headerSub').textContent = 'URP Purchase · ' + currentCompany.address.split('\n')[0];
+  document.getElementById('headerSub').textContent = 'GST: ' + currentCompany.gst;
   document.getElementById('invoiceDate').value = localDate();
   loadNextNumber();
   recalc();
@@ -717,7 +692,7 @@ async function generateInvoice() {
   } catch(e) { toast('Network error'); }
 
   btn.disabled = false;
-  btn.textContent = 'Generate & Save Invoice';
+  btn.textContent = editMode ? 'Update Invoice' : 'Generate & Save Invoice';
 }
 
 async function downloadPDF(invData) {
@@ -817,8 +792,7 @@ async function loadHistory() {
               </div>
             `).join('')}
           </div>
-        </div>
-      `;
+        </div>`;
     }).join('');
   } catch(e) { list.innerHTML='<div class="empty">Could not load.</div>'; }
 }
@@ -906,6 +880,10 @@ document.getElementById('productDesc').addEventListener('change', function() {
 ['quantity','rate'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
 document.getElementById('vehicleNo').addEventListener('input', function() { this.value = this.value.toUpperCase(); });
 
+// Wake up Render on page load
+fetch(`${API}/health`).catch(()=>{});
+
+// Auto-restore session
 if (sessionStorage.getItem('urp_auth') === '1') {
   const saved = sessionStorage.getItem('urp_company');
   if (saved) {
