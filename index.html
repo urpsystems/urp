@@ -586,11 +586,11 @@ async function doLogin() {
   const pin = document.getElementById('pinInput').value.trim();
   if (!pin) return;
 
-  if (!serverReady) {
-    document.getElementById('pinConnecting').textContent = 'Server is starting up, please wait...';
-    document.getElementById('pinConnecting').classList.add('show');
-    setTimeout(doLogin, 2000);
-    return;
+  const btn = document.querySelector('.pin-btn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting...';
+  document.getElementById('pinConnecting').textContent = 'Connecting to server...';
+  document.getElementById('pinConnecting').classList.add('show');
   }
 
   try {
