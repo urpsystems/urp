@@ -19,9 +19,10 @@
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a1a1a; }
 
   #pin-screen {
-    min-height: 100vh; display: flex; flex-direction: column;
+    min-height: 100vh; display: none; flex-direction: column;
     align-items: center; background: white; padding: 0;
   }
+  #pin-screen.active { display: flex; }
   .pin-top {
     width: 100%; display: flex; flex-direction: column; align-items: center;
     padding: 48px 32px 32px; background: white;
@@ -51,6 +52,7 @@
     min-height: 100vh; display: none; flex-direction: column;
     align-items: center; background: white; padding: 0;
   }
+  #company-screen.active { display: flex; }
   .company-top {
     width: 100%; display: flex; flex-direction: column; align-items: center;
     padding: 40px 32px 24px;
@@ -450,6 +452,20 @@ const COMPANY_CLASSES = {
   'S M Equipments':         'company-btn-sm'
 };
 
+// ── ROUTING — no flash on load ────────────────────────────
+function showScreen(screen) {
+  document.getElementById('pin-screen').classList.remove('active');
+  document.getElementById('company-screen').classList.remove('active');
+  document.getElementById('app').style.display = 'none';
+  if (screen === 'pin') {
+    document.getElementById('pin-screen').classList.add('active');
+  } else if (screen === 'company') {
+    document.getElementById('company-screen').classList.add('active');
+  } else if (screen === 'app') {
+    document.getElementById('app').style.display = 'block';
+  }
+}
+
 const PLACES = [
   {n:'Hubballi',p:'580026'},{n:'Gadag',p:'582102'},
   {n:'Dandeli',p:'581325'},{n:'Sirsi',p:'581401'},
@@ -550,31 +566,30 @@ async function doLogin() {
   const btn = document.getElementById('pinBtn');
   const msg = document.getElementById('pinConnecting');
   const err = document.getElementById('pinError');
-  btn.disabled = true;
-  btn.textContent = 'Connecting...';
+  btn.disabled = true; btn.textContent = 'Connecting...';
   msg.textContent = 'Connecting to server...';
   msg.classList.add('show');
   err.style.display = 'none';
   try {
-    const r = await fetch(`${API}/auth/login`, {
+    const r = await fetch(`${API}/auth/login`,{
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin})
     });
     const d = await r.json();
     if (d.success) {
       sessionStorage.setItem('urp_auth','1');
       msg.classList.remove('show');
-      showCompanyScreen();
+      await loadCompanies();
+      showScreen('company');
     } else {
       err.textContent = 'Incorrect PIN. Try again.';
       err.style.display = 'block';
       document.getElementById('pinInput').value = '';
     }
   } catch(e) {
-    err.textContent = 'Server is starting up. Please wait 30 seconds and try again.';
+    err.textContent = 'Server starting up. Wait 30 seconds and try again.';
     err.style.display = 'block';
   }
-  btn.disabled = false;
-  btn.textContent = 'Unlock';
+  btn.disabled = false; btn.textContent = 'Unlock';
   msg.classList.remove('show');
 }
 document.getElementById('pinInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
@@ -582,10 +597,8 @@ document.getElementById('pinInput').addEventListener('keydown', e => { if(e.key=
 function doLogout() {
   sessionStorage.removeItem('urp_auth');
   sessionStorage.removeItem('urp_company');
-  currentCompany = null;
-  document.getElementById('pin-screen').style.display = 'flex';
-  document.getElementById('company-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'none';
+  currentCompany = null; allCompanies = [];
+  showScreen('pin');
   document.getElementById('pinInput').value = '';
   document.getElementById('pinError').style.display = 'none';
 }
@@ -593,22 +606,22 @@ function doLogout() {
 function switchCompany() {
   sessionStorage.removeItem('urp_company');
   currentCompany = null;
-  document.getElementById('app').style.display = 'none';
-  showCompanyScreen();
+  renderCompanyList();
+  showScreen('company');
 }
 
-async function showCompanyScreen() {
-  document.getElementById('pin-screen').style.display = 'none';
-  document.getElementById('company-screen').style.display = 'flex';
-  if (allCompanies.length === 0) {
-    try {
-      const r = await fetch(`${API}/companies`);
-      allCompanies = await r.json();
-    } catch(e) {
-      document.getElementById('companyList').innerHTML = '<div class="empty">Could not load. Check connection.</div>';
-      return;
-    }
+// ── COMPANIES ────────────────────────────────────────────
+async function loadCompanies() {
+  if (allCompanies.length > 0) return;
+  try {
+    const r = await fetch(`${API}/companies`);
+    allCompanies = await r.json();
+  } catch(e) {
+    document.getElementById('companyList').innerHTML = '<div class="empty">Could not load. Check connection.</div>';
   }
+}
+
+function renderCompanyList() {
   document.getElementById('companyList').innerHTML = allCompanies.map(co => {
     const cls = COMPANY_CLASSES[co.name] || 'company-btn-sm';
     return `
@@ -623,20 +636,15 @@ function selectCompany(id) {
   currentCompany = allCompanies.find(c => c.id === id);
   sessionStorage.setItem('urp_company', JSON.stringify(currentCompany));
   applyScheme(currentCompany.name);
-  document.getElementById('company-screen').style.display = 'none';
-  showApp();
-}
-
-function showApp() {
-  applyScheme(currentCompany.name);
-  document.getElementById('app').style.display = 'block';
+  showScreen('app');
   document.getElementById('headerTitle').textContent = currentCompany.name;
-  document.getElementById('headerSub').textContent = 'GST: ' + currentCompany.gst;
+  document.getElementById('headerSub').textContent   = 'GST: ' + currentCompany.gst;
   document.getElementById('invoiceDate').value = localDate();
   loadNextNumber();
   recalc();
 }
 
+// ── NEXT NUMBER ──────────────────────────────────────────
 async function loadNextNumber() {
   try {
     const r = await fetch(`${API}/invoice/next-number/${currentCompany.id}`);
@@ -645,6 +653,7 @@ async function loadNextNumber() {
   } catch(e) { document.getElementById('invoiceNo').value = 'Error'; }
 }
 
+// ── RECALC ───────────────────────────────────────────────
 function recalc() {
   const qty  = parseFloat(document.getElementById('quantity').value)||0;
   const rate = parseFloat(document.getElementById('rate').value)||0;
@@ -661,6 +670,7 @@ function getHSN() {
   return sel;
 }
 
+// ── GENERATE ─────────────────────────────────────────────
 async function generateInvoice() {
   const qty  = parseFloat(document.getElementById('quantity').value)||0;
   const rate = parseFloat(document.getElementById('rate').value)||0;
@@ -702,6 +712,7 @@ async function generateInvoice() {
       if (!d.success) { toast('Update failed'); btn.disabled=false; btn.textContent='Update Invoice'; return; }
       invoiceNumber = document.getElementById('invoiceNo').value;
       toast('Invoice updated ✓');
+      editMode = false; currentInvoiceId = null;
     } else {
       const r = await fetch(`${API}/invoice/generate`,{
         method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
@@ -718,14 +729,29 @@ async function generateInvoice() {
     document.getElementById('successBox').style.display = 'block';
     document.getElementById('btnPDF').style.display     = 'block';
     document.getElementById('invoiceNo').value          = invoiceNumber;
-    if (!editMode) loadNextNumber();
-    editMode = false; currentInvoiceId = null;
+
+    // Auto-reset form after 1.5 seconds
+    setTimeout(() => {
+      ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('rate').value      = '8';
+      document.getElementById('stateName').value = 'Karnataka';
+      document.getElementById('stateCode').value = '29';
+      document.getElementById('invoiceDate').value = localDate();
+      document.getElementById('customDescWrap').style.display = 'none';
+      document.getElementById('customHsnWrap').style.display  = 'none';
+      recalc();
+      loadNextNumber();
+    }, 1500);
+
   } catch(e) { toast('Network error'); }
 
   btn.disabled = false;
   btn.textContent = 'Generate & Save Invoice';
 }
 
+// ── DOWNLOAD PDF ─────────────────────────────────────────
 async function downloadPDF(invData) {
   const data = invData || lastInvoiceData;
   if (!data) { toast('No invoice to download'); return; }
@@ -750,6 +776,7 @@ async function downloadPDF(invData) {
   if (btn) { btn.disabled=false; btn.textContent='Download PDF'; }
 }
 
+// ── RESET ────────────────────────────────────────────────
 function resetForm() {
   ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
     document.getElementById(id).value = '';
@@ -768,6 +795,7 @@ function resetForm() {
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+// ── TABS ─────────────────────────────────────────────────
 function showTab(t) {
   document.getElementById('sec-new').style.display  = t==='new'  ? 'block':'none';
   document.getElementById('sec-hist').style.display = t==='hist' ? 'block':'none';
@@ -776,6 +804,7 @@ function showTab(t) {
   if (t==='hist') loadHistory();
 }
 
+// ── HISTORY ──────────────────────────────────────────────
 async function loadHistory() {
   const list = document.getElementById('hist-list');
   list.innerHTML = '<div class="loading-msg">Loading...</div>';
@@ -816,7 +845,7 @@ async function loadHistory() {
                   <div class="hist-amt">₹${fmt(inv.amount)}</div>
                 </div>
                 <div class="hist-name">${inv.consignor_name}</div>
-                <div class="hist-meta">${dispDate(inv.invoice_date)} · ${fmtQ(inv.quantity)} Kgs · ₹${fmt(inv.rate)}/Kg</div>
+                <div class="hist-meta">${dispDate(inv.invoice_date)} · ${fmtQ(inv.quantity)} Kgs · ₹${fmt(inv.amount)}</div>
                 <div class="hist-actions">
                   <button class="btn-sm btn-edit-sm" onclick="editInvoice('${inv.id}')">Edit</button>
                   <button class="btn-sm btn-del-sm"  onclick="deleteInvoice('${inv.id}','${inv.invoice_number}')">Delete</button>
@@ -918,21 +947,30 @@ document.getElementById('vehicleNo').addEventListener('input', function() { this
 // Wake up Render on page load
 fetch(`${API}/health`).catch(()=>{});
 
-// Auto-restore session
-if (sessionStorage.getItem('urp_auth') === '1') {
-  const saved = sessionStorage.getItem('urp_company');
-  if (saved) {
-    currentCompany = JSON.parse(saved);
-    allCompanies = [currentCompany];
-    fetch(`${API}/companies`).then(r=>r.json()).then(d=>{ allCompanies=d; });
-    showApp();
+// ── SESSION RESTORE — no flash ────────────────────────────
+(async function init() {
+  const auth    = sessionStorage.getItem('urp_auth');
+  const savedCo = sessionStorage.getItem('urp_company');
+
+  if (auth === '1' && savedCo) {
+    currentCompany = JSON.parse(savedCo);
+    applyScheme(currentCompany.name);
+    // Load companies in background
+    fetch(`${API}/companies`).then(r=>r.json()).then(d=>{ allCompanies=d; }).catch(()=>{});
+    showScreen('app');
+    document.getElementById('headerTitle').textContent = currentCompany.name;
+    document.getElementById('headerSub').textContent   = 'GST: ' + currentCompany.gst;
+    document.getElementById('invoiceDate').value = localDate();
+    loadNextNumber();
+    recalc();
+  } else if (auth === '1') {
+    await loadCompanies();
+    renderCompanyList();
+    showScreen('company');
   } else {
-    fetch(`${API}/companies`).then(r=>r.json()).then(d=>{
-      allCompanies = d;
-      showCompanyScreen();
-    });
+    showScreen('pin');
   }
-}
+})();
 </script>
 </body>
 </html>
