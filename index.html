@@ -178,6 +178,7 @@
   .btn-primary { background: linear-gradient(135deg, var(--primary-dark), var(--primary)); color: white; }
   .btn-outline { background: white; color: var(--primary-dark); border: 1.5px solid var(--primary); }
   .btn-ghost { background: #eee; color: #555; }
+  .btn-whatsapp { background: #25D366; color: white; }
   .btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .btn-sm {
     padding: 7px 14px; font-size: 12px; font-weight: 600;
@@ -186,6 +187,7 @@
   .btn-edit-sm { background: var(--primary-light); color: var(--primary-dark); }
   .btn-del-sm  { background: #fdecea; color: #c0392b; }
   .btn-pdf-sm  { background: #e6f4ed; color: #1a6e20; }
+  .btn-wa-sm   { background: #dcf8e1; color: #1a6e20; }
 
   .success-box {
     background: #e8f5ec; border: 1px solid #b0d9b8;
@@ -398,8 +400,9 @@
 
       <div class="btn-stack">
         <button type="button" class="btn btn-primary" id="btnGenerate" onclick="generateInvoice()">Generate &amp; Save Invoice</button>
-        <button type="button" class="btn btn-outline" id="btnPDF" onclick="downloadPDF()" style="display:none">Download PDF</button>
-        <button type="button" class="btn btn-ghost" onclick="resetForm()">Reset Form</button>
+        <button type="button" class="btn btn-outline"   id="btnPDF"       onclick="downloadPDF()"        style="display:none">⬇ Download PDF</button>
+        <button type="button" class="btn btn-whatsapp"  id="btnWhatsApp"  onclick="shareWhatsApp()"      style="display:none">📤 Share on WhatsApp</button>
+        <button type="button" class="btn btn-ghost"                        onclick="resetForm()">Reset Form</button>
       </div>
     </div>
 
@@ -554,6 +557,56 @@ function showSwitchBtn(show) {
   if (btn) btn.style.display = show ? 'inline-block' : 'none';
 }
 
+// ── WHATSAPP SHARE ───────────────────────────────────────
+async function shareWhatsApp(invoiceId) {
+  try {
+    toast('Preparing PDF...');
+    let blob, filename, invData;
+
+    if (invoiceId) {
+      // From history
+      const inv = allInvoices.find(i => i.id === invoiceId);
+      const r = await fetch(`${API}/invoice/pdf/${invoiceId}`);
+      if (!r.ok) { toast('PDF failed'); return; }
+      blob = await r.blob();
+      filename = `${(inv ? inv.consignor_name : 'Invoice').replace(/\s+/g,'_')}_${invoiceId.slice(-3)}.pdf`;
+      invData = inv;
+    } else {
+      // From new invoice
+      if (!lastInvoiceData) { toast('No invoice to share'); return; }
+      const r = await fetch(`${API}/invoice/pdf`,{
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(lastInvoiceData)
+      });
+      if (!r.ok) { toast('PDF failed'); return; }
+      blob = await r.blob();
+      filename = `${(lastInvoiceData.consignor_name||'Invoice').replace(/\s+/g,'_')}_${lastInvoiceData.invoice_number.slice(-3)}.pdf`;
+      invData = lastInvoiceData;
+    }
+
+    const file = new File([blob], filename, { type: 'application/pdf' });
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      // Native share sheet — works on Android and iOS
+      await navigator.share({
+        files: [file],
+        title: filename.replace('.pdf',''),
+        text: `URP Purchase Invoice — ${invData ? invData.consignor_name : ''}`
+      });
+    } else {
+      // Fallback — download the file and open WhatsApp Web
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      setTimeout(() => { window.open('https://web.whatsapp.com', '_blank'); }, 500);
+      toast('PDF downloaded — attach it in WhatsApp Web');
+    }
+  } catch(e) {
+    if (e.name !== 'AbortError') toast('Share failed');
+  }
+}
+
 async function doLogin() {
   const pin = document.getElementById('pinInput').value.trim();
   if (!pin) return;
@@ -575,9 +628,7 @@ async function doLogin() {
       const rc = await fetch(`${API}/companies`);
       allCompanies = await rc.json();
       msg.classList.remove('show');
-
       if (d.company_id) {
-        // Company user — go straight to their company
         const co = allCompanies.find(c => c.id === d.company_id);
         if (co) {
           sessionStorage.setItem('urp_company', JSON.stringify(co));
@@ -589,11 +640,9 @@ async function doLogin() {
           document.getElementById('headerSub').textContent   = 'GST: ' + co.gst;
           document.getElementById('invoiceDate').value = localDate();
           showSwitchBtn(false);
-          loadNextNumber();
-          recalc();
+          loadNextNumber(); recalc();
         }
       } else {
-        // Master user — show company selector
         sessionStorage.removeItem('urp_locked');
         renderCompanyList();
         showScreen('company');
@@ -655,8 +704,7 @@ function selectCompany(id) {
   document.getElementById('headerSub').textContent   = 'GST: ' + currentCompany.gst;
   document.getElementById('invoiceDate').value = localDate();
   showSwitchBtn(true);
-  loadNextNumber();
-  recalc();
+  loadNextNumber(); recalc();
 }
 
 async function loadNextNumber() {
@@ -738,9 +786,10 @@ async function generateInvoice() {
     lastInvoiceData = { ...body, invoice_number: invoiceNumber };
     document.getElementById('successTitle').textContent = 'Invoice Saved';
     document.getElementById('successMsg').textContent   = `${invoiceNumber} · ${name} · ₹${fmt(amt)}`;
-    document.getElementById('successBox').style.display = 'block';
-    document.getElementById('btnPDF').style.display     = 'block';
-    document.getElementById('invoiceNo').value          = invoiceNumber;
+    document.getElementById('successBox').style.display  = 'block';
+    document.getElementById('btnPDF').style.display      = 'block';
+    document.getElementById('btnWhatsApp').style.display = 'block';
+    document.getElementById('invoiceNo').value           = invoiceNumber;
 
     setTimeout(() => {
       ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
@@ -752,8 +801,7 @@ async function generateInvoice() {
       document.getElementById('invoiceDate').value = localDate();
       document.getElementById('customDescWrap').style.display = 'none';
       document.getElementById('customHsnWrap').style.display  = 'none';
-      recalc();
-      loadNextNumber();
+      recalc(); loadNextNumber();
     }, 1500);
 
   } catch(e) { toast('Network error'); }
@@ -772,7 +820,7 @@ async function downloadPDF(invData) {
     const r = await fetch(`${API}/invoice/pdf`,{
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
     });
-    if (!r.ok) { toast('PDF generation failed'); if(btn){btn.disabled=false;btn.textContent='Download PDF';} return; }
+    if (!r.ok) { toast('PDF generation failed'); if(btn){btn.disabled=false;btn.textContent='⬇ Download PDF';} return; }
     const blob = await r.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -783,7 +831,7 @@ async function downloadPDF(invData) {
     document.body.removeChild(a); URL.revokeObjectURL(url);
     toast('PDF downloaded ✓');
   } catch(e) { toast('Download failed'); }
-  if (btn) { btn.disabled=false; btn.textContent='Download PDF'; }
+  if (btn) { btn.disabled=false; btn.textContent='⬇ Download PDF'; }
 }
 
 function resetForm() {
@@ -796,6 +844,7 @@ function resetForm() {
   document.getElementById('invoiceDate').value = localDate();
   document.getElementById('successBox').style.display  = 'none';
   document.getElementById('btnPDF').style.display      = 'none';
+  document.getElementById('btnWhatsApp').style.display = 'none';
   document.getElementById('btnGenerate').textContent   = 'Generate & Save Invoice';
   document.getElementById('customDescWrap').style.display = 'none';
   document.getElementById('customHsnWrap').style.display  = 'none';
@@ -855,7 +904,8 @@ async function loadHistory() {
                 <div class="hist-actions">
                   <button class="btn-sm btn-edit-sm" onclick="editInvoice('${inv.id}')">Edit</button>
                   <button class="btn-sm btn-del-sm"  onclick="deleteInvoice('${inv.id}','${inv.invoice_number}')">Delete</button>
-                  <button class="btn-sm btn-pdf-sm"  onclick="downloadHistPDF('${inv.id}')">Download PDF</button>
+                  <button class="btn-sm btn-pdf-sm"  onclick="downloadHistPDF('${inv.id}')">⬇ PDF</button>
+                  <button class="btn-sm btn-wa-sm"   onclick="shareWhatsApp('${inv.id}')">📤 WhatsApp</button>
                 </div>
               </div>`).join('')}
           </div>
@@ -888,8 +938,9 @@ async function editInvoice(id) {
   document.getElementById('quantity').value         = inv.quantity||'';
   document.getElementById('rate').value             = inv.rate||'8';
   document.getElementById('btnGenerate').textContent = 'Update Invoice';
-  document.getElementById('successBox').style.display = 'none';
-  document.getElementById('btnPDF').style.display     = 'none';
+  document.getElementById('successBox').style.display  = 'none';
+  document.getElementById('btnPDF').style.display      = 'none';
+  document.getElementById('btnWhatsApp').style.display = 'none';
   showTab('new'); recalc();
   toast('Editing '+inv.invoice_number);
   window.scrollTo({top:0,behavior:'smooth'});
@@ -965,8 +1016,7 @@ fetch(`${API}/health`).catch(()=>{});
     document.getElementById('headerSub').textContent   = 'GST: ' + currentCompany.gst;
     document.getElementById('invoiceDate').value = localDate();
     showSwitchBtn(!locked);
-    loadNextNumber();
-    recalc();
+    loadNextNumber(); recalc();
     fetch(`${API}/companies`).then(r=>r.json()).then(d=>{ allCompanies=d; }).catch(()=>{});
   } else if (auth === '1') {
     showScreen('company');
