@@ -809,7 +809,9 @@ async function generateInvoice() {
       document.getElementById('invoiceDate').value = localDate();
       document.getElementById('customDescWrap').style.display = 'none';
       document.getElementById('customHsnWrap').style.display  = 'none';
-      recalc(); loadNextNumber();
+      recalc();
+      loadNextNumber();
+      // Do NOT reset buttons here — user still needs WhatsApp/PDF
     }, 1500);
 
   } catch(e) { toast('Network error'); }
