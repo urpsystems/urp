@@ -793,9 +793,10 @@ async function generateInvoice() {
     lastInvoiceData = { ...body, invoice_number: invoiceNumber };
     document.getElementById('successTitle').textContent = 'Invoice Saved';
     document.getElementById('successMsg').textContent   = `${invoiceNumber} · ${name} · ₹${fmt(amt)}`;
-    document.getElementById('successBox').style.display  = 'block';
+    ddocument.getElementById('successBox').style.display  = 'block';
     document.getElementById('btnWhatsApp').style.display = 'block';
     document.getElementById('btnPDF').style.display      = 'block';
+    document.getElementById('btnGenerate').style.display = 'none';
     document.getElementById('invoiceNo').value           = invoiceNumber;
 
     setTimeout(() => {
