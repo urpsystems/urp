@@ -163,7 +163,6 @@
   .summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; border-bottom: 1px solid #eaf2fc; }
   .summary-row:last-child { border: none; font-size: 15px; font-weight: 700; color: var(--primary-dark); padding-top: 8px; }
   .summary-row.tax-row { color: #555; font-size: 13px; }
-  .summary-row.grand-total { font-size: 16px; font-weight: 800; color: var(--primary-dark); border-top: 1.5px solid var(--primary-border); padding-top: 8px; margin-top: 4px; }
 
   .words-box {
     background: #fffbe6; border: 1px solid #e6d400;
@@ -172,12 +171,10 @@
   .words-label { font-size: 11px; font-weight: 700; color: #7a6000; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
   .words-text { font-size: 13px; color: #3d3000; font-style: italic; font-weight: 500; line-height: 1.5; }
 
-  .supply-toggle {
-    display: flex; gap: 8px; margin-bottom: 0;
-  }
+  .supply-toggle { display: flex; gap: 8px; }
   .supply-btn {
     flex: 1; padding: 10px; border-radius: 8px; border: 1.5px solid #ccc;
-    background: white; font-size: 14px; font-weight: 600; cursor: pointer;
+    background: white; font-size: 13px; font-weight: 600; cursor: pointer;
     font-family: inherit; color: var(--muted); transition: all 0.15s;
   }
   .supply-btn.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); }
@@ -311,7 +308,6 @@
             <label>Vehicle Number</label>
             <input type="text" id="vehicleNo" placeholder="KA65 1189" />
           </div>
-          <!-- Supply type — shown only for GST companies -->
           <div class="field" id="supplyTypeWrap" style="display:none">
             <label>Supply Type</label>
             <div class="supply-toggle">
@@ -408,11 +404,11 @@
         <div class="summary-head">Summary</div>
         <div class="summary-row"><span>Quantity</span><span id="s-qty">0 Kgs</span></div>
         <div class="summary-row"><span>Rate</span><span id="s-rate">₹ 8.00 / Kg</span></div>
-        <div class="summary-row" id="s-taxable-row" style="display:none"><span id="s-taxable-label">Taxable Value</span><span id="s-taxable">₹ 0.00</span></div>
+        <div class="summary-row" id="s-taxable-row" style="display:none"><span>Taxable Value</span><span id="s-taxable">₹ 0.00</span></div>
         <div class="summary-row tax-row" id="s-cgst-row" style="display:none"><span>CGST @ 9%</span><span id="s-cgst">₹ 0.00</span></div>
         <div class="summary-row tax-row" id="s-sgst-row" style="display:none"><span>SGST @ 9%</span><span id="s-sgst">₹ 0.00</span></div>
         <div class="summary-row tax-row" id="s-igst-row" style="display:none"><span>IGST @ 18%</span><span id="s-igst">₹ 0.00</span></div>
-        <div class="summary-row" id="s-total-row"><span>Total</span><span id="s-total">₹ 0.00</span></div>
+        <div class="summary-row"><span id="s-total-label">Total</span><span id="s-total">₹ 0.00</span></div>
       </div>
 
       <div class="words-box">
@@ -504,6 +500,15 @@ function setSupplyType(type) {
   supplyType = type;
   document.getElementById('btnLocal').classList.toggle('active', type === 'local');
   document.getElementById('btnInterstate').classList.toggle('active', type === 'interstate');
+  recalc();
+}
+
+function applyGSTUI() {
+  const hasGST = currentCompany && currentCompany.has_gst;
+  document.getElementById('supplyTypeWrap').style.display = hasGST ? 'block' : 'none';
+  supplyType = 'local';
+  document.getElementById('btnLocal').classList.add('active');
+  document.getElementById('btnInterstate').classList.remove('active');
   recalc();
 }
 
@@ -713,8 +718,32 @@ function switchCompany() {
   if (locked) return;
   sessionStorage.removeItem('urp_company');
   currentCompany = null;
+  allInvoices = [];
+  resetFormFields();
   renderCompanyList();
   showScreen('company');
+}
+
+function resetFormFields() {
+  ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('rate').value       = '8';
+  document.getElementById('stateName').value  = 'Karnataka';
+  document.getElementById('stateCode').value  = '29';
+  document.getElementById('invoiceDate').value = localDate();
+  document.getElementById('successBox').style.display  = 'none';
+  document.getElementById('btnWhatsApp').style.display = 'none';
+  document.getElementById('btnPDF').style.display      = 'none';
+  document.getElementById('btnGenerate').style.display = 'block';
+  document.getElementById('btnGenerate').textContent   = 'Generate & Save Invoice';
+  document.getElementById('customDescWrap').style.display = 'none';
+  document.getElementById('customHsnWrap').style.display  = 'none';
+  document.getElementById('supplyTypeWrap').style.display = 'none';
+  supplyType = 'local';
+  document.getElementById('btnLocal').classList.add('active');
+  document.getElementById('btnInterstate').classList.remove('active');
+  editMode=false; currentInvoiceId=null; lastInvoiceData=null;
 }
 
 function renderCompanyList() {
@@ -736,6 +765,8 @@ function selectCompany(id) {
   currentCompany = allCompanies.find(c => c.id === id);
   sessionStorage.setItem('urp_company', JSON.stringify(currentCompany));
   applyScheme(currentCompany.name);
+  allInvoices = [];
+  resetFormFields();
   showScreen('app');
   document.getElementById('headerTitle').textContent = currentCompany.name;
   document.getElementById('headerSub').textContent   = 'GST: ' + currentCompany.gst;
@@ -743,16 +774,6 @@ function selectCompany(id) {
   showSwitchBtn(true);
   applyGSTUI();
   loadNextNumber(); recalc();
-}
-
-function applyGSTUI() {
-  const hasGST = currentCompany && currentCompany.has_gst;
-  document.getElementById('supplyTypeWrap').style.display = hasGST ? 'block' : 'none';
-  document.getElementById('s-taxable-row').style.display  = hasGST ? 'flex'  : 'none';
-  supplyType = 'local';
-  document.getElementById('btnLocal').classList.add('active');
-  document.getElementById('btnInterstate').classList.remove('active');
-  recalc();
 }
 
 async function loadNextNumber() {
@@ -764,20 +785,19 @@ async function loadNextNumber() {
 }
 
 function recalc() {
-  const qty  = parseFloat(document.getElementById('quantity').value)||0;
-  const rate = parseFloat(document.getElementById('rate').value)||0;
+  const qty     = parseFloat(document.getElementById('quantity').value)||0;
+  const rate    = parseFloat(document.getElementById('rate').value)||0;
   const taxable = qty * rate;
-  const hasGST = currentCompany && currentCompany.has_gst;
+  const hasGST  = currentCompany && currentCompany.has_gst;
 
   document.getElementById('s-qty').textContent  = fmtQ(qty)+' Kgs';
   document.getElementById('s-rate').textContent = '₹ '+fmt(rate)+' / Kg';
 
   if (hasGST) {
-    document.getElementById('s-taxable').textContent = '₹ '+fmt(taxable);
     document.getElementById('s-taxable-row').style.display = 'flex';
-
+    document.getElementById('s-taxable').textContent = '₹ '+fmt(taxable);
     if (supplyType === 'interstate') {
-      const igst = Math.round(taxable * 18) / 100;
+      const igst  = Math.round(taxable * 18) / 100;
       const grand = taxable + igst;
       document.getElementById('s-cgst-row').style.display = 'none';
       document.getElementById('s-sgst-row').style.display = 'none';
@@ -786,8 +806,8 @@ function recalc() {
       document.getElementById('s-total').textContent = '₹ '+fmt(grand);
       document.getElementById('amountWords').textContent = grand > 0 ? toWords(grand) : '—';
     } else {
-      const cgst = Math.round(taxable * 9) / 100;
-      const sgst = Math.round(taxable * 9) / 100;
+      const cgst  = Math.round(taxable * 9) / 100;
+      const sgst  = Math.round(taxable * 9) / 100;
       const grand = taxable + cgst + sgst;
       document.getElementById('s-cgst-row').style.display = 'flex';
       document.getElementById('s-sgst-row').style.display = 'flex';
@@ -826,24 +846,28 @@ async function generateInvoice() {
 
   const hasGST  = currentCompany.has_gst;
   const taxable = qty * rate;
-  let grandTotal, cgst_rate, cgst_amount, sgst_rate, sgst_amount, igst_rate, igst_amount;
+  let grandTotal, cgst_rate, cgst_amount, sgst_rate, sgst_amount, igst_rate, igst_amount, taxable_value;
 
   if (hasGST) {
+    taxable_value = taxable;
     if (supplyType === 'interstate') {
       igst_rate   = 18;
       igst_amount = Math.round(taxable * 18) / 100;
-      cgst_rate = cgst_amount = sgst_rate = sgst_amount = 0;
+      cgst_rate = 0; cgst_amount = 0;
+      sgst_rate = 0; sgst_amount = 0;
       grandTotal  = taxable + igst_amount;
     } else {
       cgst_rate   = 9; cgst_amount = Math.round(taxable * 9) / 100;
       sgst_rate   = 9; sgst_amount = Math.round(taxable * 9) / 100;
-      igst_rate = igst_amount = 0;
+      igst_rate   = 0; igst_amount = 0;
       grandTotal  = taxable + cgst_amount + sgst_amount;
     }
   } else {
-    grandTotal = taxable;
+    grandTotal    = taxable;
     taxable_value = null;
-    cgst_rate = cgst_amount = sgst_rate = sgst_amount = igst_rate = igst_amount = null;
+    cgst_rate = null; cgst_amount = null;
+    sgst_rate = null; sgst_amount = null;
+    igst_rate = null; igst_amount = null;
   }
 
   const date  = document.getElementById('invoiceDate').value;
@@ -859,15 +883,19 @@ async function generateInvoice() {
   const words = toWords(grandTotal);
 
   const body = {
-    company_id: currentCompany.id,
-    invoice_date:date, consignor_name:name, consignor_address:addr,
-    place, pincode:pin, state, state_code:sc, vehicle_number:veh,
-    product_desc:desc, hsn_code:hsn, quantity:qty, rate,
-    amount: grandTotal, amount_words: words,
-    taxable_value: hasGST ? taxable : null,
-    cgst_rate, cgst_amount, sgst_rate, sgst_amount,
-    igst_rate, igst_amount,
-    supply_type: hasGST ? supplyType : null
+    company_id:     currentCompany.id,
+    invoice_date:   date,
+    consignor_name: name,
+    consignor_address: addr,
+    place, pincode: pin, state, state_code: sc, vehicle_number: veh,
+    product_desc: desc, hsn_code: hsn, quantity: qty, rate,
+    amount:       grandTotal,
+    amount_words: words,
+    taxable_value,
+    cgst_rate,   cgst_amount,
+    sgst_rate,   sgst_amount,
+    igst_rate,   igst_amount,
+    supply_type:  hasGST ? supplyType : null
   };
 
   const btn = document.getElementById('btnGenerate');
@@ -946,24 +974,8 @@ async function downloadPDF() {
 }
 
 function resetForm() {
-  ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('rate').value       = '8';
-  document.getElementById('stateName').value  = 'Karnataka';
-  document.getElementById('stateCode').value  = '29';
-  document.getElementById('invoiceDate').value = localDate();
-  document.getElementById('successBox').style.display  = 'none';
-  document.getElementById('btnWhatsApp').style.display = 'none';
-  document.getElementById('btnPDF').style.display      = 'none';
-  document.getElementById('btnGenerate').style.display = 'block';
-  document.getElementById('btnGenerate').textContent   = 'Generate & Save Invoice';
-  document.getElementById('customDescWrap').style.display = 'none';
-  document.getElementById('customHsnWrap').style.display  = 'none';
-  editMode=false; currentInvoiceId=null; lastInvoiceData=null;
-  supplyType = 'local';
-  document.getElementById('btnLocal').classList.add('active');
-  document.getElementById('btnInterstate').classList.remove('active');
+  resetFormFields();
+  applyGSTUI();
   loadNextNumber(); recalc();
   window.scrollTo({top:0,behavior:'smooth'});
 }
