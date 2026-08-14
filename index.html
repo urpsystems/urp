@@ -345,11 +345,14 @@
           <div class="row2">
             <div class="field">
               <label>State</label>
-              <input type="text" id="stateName" value="Karnataka" />
+              <div class="ac-wrap">
+                <input type="text" id="stateName" value="Karnataka" autocomplete="off" oninput="filterStates()" />
+                <div class="ac-list" id="stateAcList" style="display:none"></div>
+              </div>
             </div>
             <div class="field">
               <label>State Code</label>
-              <input type="text" id="stateCode" value="29" />
+              <input type="text" id="stateCode" value="29" inputmode="numeric" />
             </div>
           </div>
         </div>
@@ -408,7 +411,7 @@
         <div class="summary-row tax-row" id="s-cgst-row" style="display:none"><span>CGST @ 9%</span><span id="s-cgst">₹ 0.00</span></div>
         <div class="summary-row tax-row" id="s-sgst-row" style="display:none"><span>SGST @ 9%</span><span id="s-sgst">₹ 0.00</span></div>
         <div class="summary-row tax-row" id="s-igst-row" style="display:none"><span>IGST @ 18%</span><span id="s-igst">₹ 0.00</span></div>
-        <div class="summary-row"><span id="s-total-label">Total</span><span id="s-total">₹ 0.00</span></div>
+        <div class="summary-row"><span>Total</span><span id="s-total">₹ 0.00</span></div>
       </div>
 
       <div class="words-box">
@@ -512,6 +515,7 @@ function applyGSTUI() {
   recalc();
 }
 
+// ── PLACES ───────────────────────────────────────────────
 const PLACES = [
   {n:'Hubballi',p:'580026'},{n:'Gadag',p:'582102'},
   {n:'Dandeli',p:'581325'},{n:'Sirsi',p:'581401'},
@@ -562,10 +566,55 @@ function selectPlace(name, pin) {
   document.getElementById('pinCode').value = pin;
   document.getElementById('acList').style.display = 'none';
 }
+
+// ── STATES ───────────────────────────────────────────────
+const STATES = [
+  {n:'Jammu & Kashmir',p:'01'},{n:'Himachal Pradesh',p:'02'},
+  {n:'Punjab',p:'03'},{n:'Chandigarh',p:'04'},
+  {n:'Uttarakhand',p:'05'},{n:'Haryana',p:'06'},
+  {n:'Delhi',p:'07'},{n:'Rajasthan',p:'08'},
+  {n:'Uttar Pradesh',p:'09'},{n:'Bihar',p:'10'},
+  {n:'Sikkim',p:'11'},{n:'Arunachal Pradesh',p:'12'},
+  {n:'Nagaland',p:'13'},{n:'Manipur',p:'14'},
+  {n:'Mizoram',p:'15'},{n:'Tripura',p:'16'},
+  {n:'Meghalaya',p:'17'},{n:'Assam',p:'18'},
+  {n:'West Bengal',p:'19'},{n:'Jharkhand',p:'20'},
+  {n:'Odisha',p:'21'},{n:'Chhattisgarh',p:'22'},
+  {n:'Madhya Pradesh',p:'23'},{n:'Gujarat',p:'24'},
+  {n:'Dadra & Nagar Haveli and Daman & Diu',p:'26'},
+  {n:'Maharashtra',p:'27'},{n:'Andhra Pradesh',p:'28'},
+  {n:'Karnataka',p:'29'},{n:'Goa',p:'30'},
+  {n:'Lakshadweep',p:'31'},{n:'Kerala',p:'32'},
+  {n:'Tamil Nadu',p:'33'},{n:'Puducherry',p:'34'},
+  {n:'Andaman & Nicobar Islands',p:'35'},{n:'Telangana',p:'36'},
+  {n:'Andhra Pradesh (New)',p:'37'},{n:'Ladakh',p:'38'},
+];
+
+function filterStates() {
+  const list = document.getElementById('stateAcList');
+  const hasGST = currentCompany && currentCompany.has_gst;
+  if (!hasGST) { list.style.display = 'none'; return; }
+  const val = document.getElementById('stateName').value.trim().toLowerCase();
+  if (val.length < 2) { list.style.display = 'none'; return; }
+  const matches = STATES.filter(s => s.n.toLowerCase().includes(val)).slice(0, 8);
+  if (!matches.length) { list.style.display = 'none'; return; }
+  list.innerHTML = matches.map(s =>
+    `<div class="ac-item" onclick="selectState('${s.n.replace(/'/g,"\\'")}','${s.p}')">${s.n}<span class="ac-pin">${s.p}</span></div>`
+  ).join('');
+  list.style.display = 'block';
+}
+function selectState(name, code) {
+  document.getElementById('stateName').value = name;
+  document.getElementById('stateCode').value = code;
+  document.getElementById('stateAcList').style.display = 'none';
+}
+
 document.addEventListener('click', e => {
   if (!e.target.closest('.ac-wrap')) {
-    const l = document.getElementById('acList');
-    if (l) l.style.display = 'none';
+    const l  = document.getElementById('acList');
+    const sl = document.getElementById('stateAcList');
+    if (l)  l.style.display  = 'none';
+    if (sl) sl.style.display = 'none';
   }
 });
 
@@ -736,6 +785,7 @@ function resetFormFields() {
   document.getElementById('btnWhatsApp').style.display = 'none';
   document.getElementById('btnPDF').style.display      = 'none';
   document.getElementById('btnGenerate').style.display = 'block';
+  document.getElementById('btnGenerate').disabled      = false;
   document.getElementById('btnGenerate').textContent   = 'Generate & Save Invoice';
   document.getElementById('customDescWrap').style.display = 'none';
   document.getElementById('customHsnWrap').style.display  = 'none';
@@ -1072,6 +1122,7 @@ async function editInvoice(id) {
     document.getElementById('btnInterstate').classList.toggle('active', supplyType === 'interstate');
   }
   document.getElementById('btnGenerate').style.display = 'block';
+  document.getElementById('btnGenerate').disabled      = false;
   document.getElementById('btnGenerate').textContent   = 'Update Invoice';
   document.getElementById('successBox').style.display  = 'none';
   document.getElementById('btnWhatsApp').style.display = 'none';
