@@ -1,1046 +1,569 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>URP Systems</title>
-<style>
-  :root {
-    --primary: #0867cf;
-    --primary-dark: #054a99;
-    --primary-light: #e8f2fd;
-    --primary-border: #b8d4f5;
-    --radius: 10px;
-    --border: #ddd;
-    --muted: #666;
-    --red: #c0392b;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a1a1a; }
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err.message);
+  console.error(err.stack);
+  process.exit(1);
+});
 
-  #pin-screen {
-    min-height: 100vh; display: none; flex-direction: column;
-    align-items: center; background: white; padding: 0;
-  }
-  #pin-screen.active { display: flex; }
-  .pin-top {
-    width: 100%; display: flex; flex-direction: column; align-items: center;
-    padding: 48px 32px 32px; background: white;
-  }
-  .pin-logo-img { width: 200px; margin-bottom: 6px; }
-  .pin-tagline { font-size: 11px; color: #aaa; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 40px; }
-  .pin-form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; padding: 0 24px; }
-  .pin-label { font-size: 12px; font-weight: 600; color: #999; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; }
-  .pin-input {
-    width: 100%; padding: 16px; border: 1.5px solid #e8e8e8;
-    border-radius: 12px; font-size: 28px; text-align: center;
-    letter-spacing: 10px; color: #333; transition: border-color 0.2s; background: #fafafa;
-  }
-  .pin-input:focus { outline: none; border-color: #0867cf; background: white; box-shadow: 0 0 0 3px rgba(8,103,207,0.1); }
-  .pin-btn {
-    width: 100%; padding: 16px;
-    background: linear-gradient(135deg, #054a99, #0867cf);
-    color: white; border: none; border-radius: 12px;
-    font-size: 17px; font-weight: 700; cursor: pointer; letter-spacing: 0.3px;
-  }
-  .pin-btn:disabled { opacity: 0.7; cursor: not-allowed; }
-  .pin-connecting { font-size: 12px; color: #aaa; text-align: center; display: none; }
-  .pin-connecting.show { display: block; }
-  .pin-error { color: var(--red); font-size: 13px; text-align: center; display: none; }
+const express = require('express');
+const cors = require('cors');
+const crypto = require('crypto');
+const PDFDocument = require('pdfkit');
+const path = require('path');
+const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
+const downloadFonts = require('./download-fonts');
 
-  #company-screen {
-    min-height: 100vh; display: none; flex-direction: column;
-    align-items: center; background: white; padding: 0;
-  }
-  #company-screen.active { display: flex; }
-  .company-top {
-    width: 100%; display: flex; flex-direction: column; align-items: center;
-    padding: 40px 32px 24px;
-  }
-  .company-logo { width: 140px; margin-bottom: 24px; }
-  .company-title { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
-  .company-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
-  .company-list { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 10px; padding: 0 20px; }
-  .company-btn {
-    width: 100%; padding: 16px 18px; border-radius: 12px; text-align: left;
-    cursor: pointer; font-family: inherit; border: none;
-    border-left: 5px solid transparent;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: transform 0.1s;
-  }
-  .company-btn:active { transform: scale(0.98); }
-  .company-btn-regal { background: #e8f2fd; border-left-color: #0867cf; }
-  .company-btn-rm    { background: #e8f5ec; border-left-color: #35a137; }
-  .company-btn-sm    { background: #eaecf0; border-left-color: #2e4a6e; }
-  .company-btn-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
-  .company-btn-regal .company-btn-name { color: #054a99; }
-  .company-btn-rm    .company-btn-name { color: #1e6e20; }
-  .company-btn-sm    .company-btn-name { color: #1a2e45; }
-  .company-btn-gst { font-size: 12px; color: var(--muted); }
-  .logout-btn {
-    margin-top: 24px; padding: 12px 32px;
-    background: none; border: 1.5px solid #ddd; border-radius: 10px;
-    color: var(--muted); font-size: 14px; cursor: pointer; font-family: inherit;
-  }
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-  header {
-    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-    color: white; padding: 14px 20px;
-    position: sticky; top: 0; z-index: 10;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  header h1 { font-size: 15px; font-weight: 700; }
-  header p { font-size: 11px; opacity: 0.7; margin-top: 1px; }
-  .hbtn {
-    background: rgba(255,255,255,0.18); border: none; color: white;
-    padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
-  }
-  .hbtn-co {
-    background: rgba(255,255,255,0.18); border: none; color: white;
-    padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-right: 6px;
-  }
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'SET' : 'NOT SET');
+console.log('SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY ? 'SET' : 'NOT SET');
 
-  .body { padding: 16px; max-width: 480px; margin: 0 auto; }
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
-  .tabs {
-    display: flex; background: white; border-radius: var(--radius);
-    border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden;
-  }
-  .tab {
-    flex: 1; padding: 11px 8px; text-align: center; font-size: 13px;
-    font-weight: 600; color: var(--muted); cursor: pointer;
-    border: none; background: none; border-bottom: 3px solid transparent;
-  }
-  .tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-light); }
+const FONTS_DIR = path.join(__dirname, 'fonts');
+let fontsReady = false;
+function fontPath(name) { return path.join(FONTS_DIR, name); }
 
-  .card {
-    background: white; border-radius: var(--radius);
-    border: 1px solid var(--border); margin-bottom: 14px; overflow: hidden;
-  }
-  .card-head {
-    background: var(--primary-light);
-    padding: 9px 16px; font-size: 11px; font-weight: 700;
-    color: var(--primary-dark); text-transform: uppercase; letter-spacing: 0.6px;
-    border-bottom: 1px solid var(--primary-border);
-  }
-  .card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+downloadFonts().then(() => {
+  fontsReady = true;
+  console.log('Fonts ready');
+}).catch(err => {
+  console.error('Font download failed:', err.message);
+});
 
-  .field { display: flex; flex-direction: column; gap: 5px; }
-  .field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
-  .field input, .field select, .field textarea {
-    padding: 10px 13px; border: 1px solid #ccc; border-radius: 8px;
-    font-size: 15px; color: #1a1a1a; background: white;
-    -webkit-appearance: none; appearance: none; width: 100%; font-family: inherit;
-  }
-  .field textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
-  .field input:focus, .field select:focus, .field textarea:focus {
-    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(8,103,207,0.1);
-  }
-  .field select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 13px center; padding-right: 36px;
-  }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+app.get('/health', (req, res) => res.json({ status: 'ok', fontsReady }));
 
-  .ac-wrap { position: relative; }
-  .ac-list {
-    position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
-    background: white; border: 1px solid #ccc; border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12); max-height: 200px; overflow-y: auto;
-  }
-  .ac-item {
-    padding: 10px 13px; font-size: 14px; cursor: pointer;
-    display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0;
-  }
-  .ac-item:last-child { border-bottom: none; }
-  .ac-item:hover, .ac-item:active { background: var(--primary-light); }
-  .ac-pin { font-size: 12px; color: var(--muted); }
-
-  .summary-card {
-    background: white; border: 1px solid var(--primary-border);
-    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
-  }
-  .summary-head { font-size: 11px; font-weight: 700; color: var(--primary-dark); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-  .summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; border-bottom: 1px solid #eaf2fc; }
-  .summary-row:last-child { border: none; font-size: 15px; font-weight: 700; color: var(--primary-dark); padding-top: 8px; }
-
-  .words-box {
-    background: #fffbe6; border: 1px solid #e6d400;
-    border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px;
-  }
-  .words-label { font-size: 11px; font-weight: 700; color: #7a6000; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
-  .words-text { font-size: 13px; color: #3d3000; font-style: italic; font-weight: 500; line-height: 1.5; }
-
-  .btn-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-  .btn {
-    width: 100%; padding: 14px; border-radius: var(--radius);
-    border: none; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .btn-primary  { background: linear-gradient(135deg, var(--primary-dark), var(--primary)); color: white; }
-  .btn-outline  { background: white; color: var(--primary-dark); border: 1.5px solid var(--primary); }
-  .btn-ghost    { background: #eee; color: #555; }
-  .btn-whatsapp { background: #25D366; color: white; }
-  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-sm {
-    padding: 7px 12px; font-size: 12px; font-weight: 600;
-    border-radius: 6px; border: none; cursor: pointer; font-family: inherit;
-    display: inline-flex; align-items: center; gap: 4px;
-  }
-  .btn-edit-sm { background: var(--primary-light); color: var(--primary-dark); }
-  .btn-del-sm  { background: #fdecea; color: #c0392b; }
-  .btn-pdf-sm  { background: #e6f4ed; color: #1a6e20; }
-  .btn-wa-sm   { background: #dcf8e1; color: #128C7E; }
-
-  .success-box {
-    background: #e8f5ec; border: 1px solid #b0d9b8;
-    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; display: none;
-  }
-  .success-box h3 { font-size: 14px; font-weight: 700; color: #1a6e20; margin-bottom: 4px; }
-  .success-box p { font-size: 13px; color: #2a5c3a; }
-
-  .hist-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-  .hist-item {
-    background: white; border-radius: var(--radius);
-    border: 1px solid var(--border); padding: 13px 16px;
-  }
-  .hist-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-  .hist-no { font-size: 14px; font-weight: 700; color: var(--primary-dark); }
-  .hist-name { font-size: 13px; color: #333; margin-bottom: 2px; }
-  .hist-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-  .hist-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .hist-divider { display: inline-block; width: 1px; background: #ddd; height: 28px; margin: 0 2px; }
-  .hist-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .hist-count { font-size: 13px; color: var(--muted); }
-
-  .month-group { margin-bottom: 10px; }
-  .month-header {
-    background: white; border-radius: var(--radius); border: 1px solid var(--border);
-    padding: 12px 16px; cursor: pointer;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .month-header:active { background: var(--primary-light); }
-  .month-name { font-size: 14px; font-weight: 700; color: var(--primary-dark); }
-  .month-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .month-chevron { font-size: 12px; color: var(--muted); }
-  .month-body { padding: 6px 0 0 0; display: flex; flex-direction: column; gap: 8px; }
-
-  .toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    background: var(--primary-dark); color: white; padding: 10px 20px;
-    border-radius: 20px; font-size: 13px; font-weight: 500;
-    z-index: 999; opacity: 0; transition: opacity 0.3s; white-space: nowrap;
-  }
-  .toast.show { opacity: 1; }
-  .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
-  .loading-msg { text-align: center; padding: 20px; color: var(--muted); font-size: 14px; }
-</style>
-</head>
-<body>
-
-<div id="pin-screen">
-  <div class="pin-top">
-    <img src="URP_Sysyems_Logo.png" alt="URP Systems" class="pin-logo-img" />
-    <div class="pin-tagline">Smart Billing. Simplified.</div>
-    <div class="pin-form">
-      <div class="pin-label">Enter PIN</div>
-      <input type="password" class="pin-input" id="pinInput" placeholder="• • • •" inputmode="numeric" maxlength="6" />
-      <div class="pin-connecting" id="pinConnecting">Connecting to server...</div>
-      <button type="button" class="pin-btn" id="pinBtn" onclick="doLogin()">Unlock</button>
-      <div class="pin-error" id="pinError">Incorrect PIN. Try again.</div>
-    </div>
-  </div>
-</div>
-
-<div id="company-screen">
-  <div class="company-top">
-    <img src="URP_Sysyems_Logo.png" alt="URP Systems" class="company-logo" />
-    <div class="company-title">Select Company</div>
-    <div class="company-sub">Which company are you invoicing for?</div>
-    <div class="company-list" id="companyList">
-      <div class="loading-msg">Loading...</div>
-    </div>
-    <button type="button" class="logout-btn" onclick="doLogout()">Logout</button>
-  </div>
-</div>
-
-<div id="app" style="display:none">
-  <header>
-    <div>
-      <h1 id="headerTitle">URP Systems</h1>
-      <p id="headerSub"></p>
-    </div>
-    <div style="display:flex;align-items:center">
-      <button type="button" class="hbtn-co" id="switchBtn" onclick="switchCompany()">⇄ Switch</button>
-      <button type="button" class="hbtn" onclick="doLogout()">Logout</button>
-    </div>
-  </header>
-
-  <div class="body">
-    <div class="tabs">
-      <button type="button" class="tab active" id="tab-new"  onclick="showTab('new')">New Invoice</button>
-      <button type="button" class="tab"        id="tab-hist" onclick="showTab('hist')">History</button>
-    </div>
-
-    <div id="sec-new">
-      <div class="card">
-        <div class="card-head">Invoice Details</div>
-        <div class="card-body">
-          <div class="row2">
-            <div class="field">
-              <label>Invoice No</label>
-              <input type="text" id="invoiceNo" readonly style="background:#f5f5f5;color:#777;" />
-            </div>
-            <div class="field">
-              <label>Date</label>
-              <input type="date" id="invoiceDate" />
-            </div>
-          </div>
-          <div class="field">
-            <label>Vehicle Number</label>
-            <input type="text" id="vehicleNo" placeholder="KA65 1189" />
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">Consignor</div>
-        <div class="card-body">
-          <div class="field">
-            <label>Name</label>
-            <input type="text" id="consignorName" placeholder="Party / Supplier name" />
-          </div>
-          <div class="field">
-            <label>Address (optional)</label>
-            <textarea id="consignorAddress" placeholder="Plot No, Street&#10;Area / Locality"></textarea>
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label>Place</label>
-              <div class="ac-wrap">
-                <input type="text" id="placeInput" placeholder="Type city..." autocomplete="off" oninput="filterPlaces()" />
-                <div class="ac-list" id="acList" style="display:none"></div>
-              </div>
-            </div>
-            <div class="field">
-              <label>Pin Code</label>
-              <input type="text" id="pinCode" placeholder="Auto-filled" inputmode="numeric" maxlength="6" />
-            </div>
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label>State</label>
-              <input type="text" id="stateName" value="Karnataka" />
-            </div>
-            <div class="field">
-              <label>State Code</label>
-              <input type="text" id="stateCode" value="29" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">Goods</div>
-        <div class="card-body">
-          <div class="field">
-            <label>Description</label>
-            <select id="productDesc">
-              <option value="Waste Plastic Scrap">Waste Plastic Scrap</option>
-              <option value="HDPE Scrap">HDPE Scrap</option>
-              <option value="PET Bottle Scrap">PET Bottle Scrap</option>
-              <option value="PP Scrap">PP Scrap</option>
-              <option value="LDPE Scrap">LDPE Scrap</option>
-              <option value="Custom">Custom...</option>
-            </select>
-          </div>
-          <div class="field" id="customDescWrap" style="display:none">
-            <label>Custom Description</label>
-            <input type="text" id="customDesc" placeholder="Enter description" />
-          </div>
-          <div class="field">
-            <label>HSN Code</label>
-            <select id="hsnCode">
-              <option value="3915">3915 — Waste / Scrap of Plastics</option>
-              <option value="3916">3916 — Monofilaments of Plastics</option>
-              <option value="3920">3920 — Plates / Sheets / Film</option>
-              <option value="4707">4707 — Waste / Scrap of Paper</option>
-              <option value="custom_hsn">Custom HSN...</option>
-            </select>
-          </div>
-          <div class="field" id="customHsnWrap" style="display:none">
-            <label>Custom HSN Code</label>
-            <input type="text" id="customHsn" placeholder="Enter HSN code" inputmode="numeric" />
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label>Quantity (Kgs)</label>
-              <input type="number" id="quantity" placeholder="0" inputmode="decimal" />
-            </div>
-            <div class="field">
-              <label>Rate (₹ / Kg)</label>
-              <input type="number" id="rate" value="8" step="0.5" inputmode="decimal" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="summary-card">
-        <div class="summary-head">Summary</div>
-        <div class="summary-row"><span>Quantity</span><span id="s-qty">0 Kgs</span></div>
-        <div class="summary-row"><span>Rate</span><span id="s-rate">₹ 8.00 / Kg</span></div>
-        <div class="summary-row"><span>Total</span><span id="s-total">₹ 0.00</span></div>
-      </div>
-
-      <div class="words-box">
-        <div class="words-label">Amount in Words</div>
-        <div class="words-text" id="amountWords">—</div>
-      </div>
-
-      <div class="success-box" id="successBox">
-        <h3 id="successTitle">Invoice Saved</h3>
-        <p id="successMsg"></p>
-      </div>
-
-      <div class="btn-stack">
-        <button type="button" class="btn btn-primary"  id="btnGenerate"  onclick="generateInvoice()">Generate &amp; Save Invoice</button>
-        <button type="button" class="btn btn-whatsapp" id="btnWhatsApp"  onclick="shareWhatsApp(null)" style="display:none">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          Share on WhatsApp
-        </button>
-        <button type="button" class="btn btn-outline"  id="btnPDF"       onclick="downloadPDF()"       style="display:none">⬇ Download PDF</button>
-        <button type="button" class="btn btn-ghost"                       onclick="resetForm()">Reset Form</button>
-      </div>
-    </div>
-
-    <div id="sec-hist" style="display:none">
-      <div class="hist-toolbar">
-        <div class="hist-count" id="hist-count"></div>
-        <button type="button" class="btn-sm btn-edit-sm" onclick="downloadCSV()">⬇ Download CSV</button>
-      </div>
-      <div class="hist-list" id="hist-list">
-        <div class="loading-msg">Loading...</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-const API = 'https://regal-urp-backend.onrender.com';
-let currentInvoiceId = null;
-let editMode = false;
-let lastInvoiceData = null;
-let allInvoices = [];
-let currentCompany = null;
-let allCompanies = [];
-
-const SCHEMES = {
-  'Regal Plastics':         { primary:'#0867cf', dark:'#054a99', light:'#e8f2fd', border:'#b8d4f5' },
-  'R M Equipments Pvt Ltd': { primary:'#35a137', dark:'#1e6e20', light:'#e8f5ec', border:'#b0d9b8' },
-  'S M Equipments':         { primary:'#4a6a8e', dark:'#2e4a6e', light:'#eaecf0', border:'#b8c8da' }
-};
-
-function applyScheme(name) {
-  const s = SCHEMES[name] || SCHEMES['Regal Plastics'];
-  const r = document.documentElement.style;
-  r.setProperty('--primary',        s.primary);
-  r.setProperty('--primary-dark',   s.dark);
-  r.setProperty('--primary-light',  s.light);
-  r.setProperty('--primary-border', s.border);
-}
-
-const COMPANY_CLASSES = {
-  'Regal Plastics':         'company-btn-regal',
-  'R M Equipments Pvt Ltd': 'company-btn-rm',
-  'S M Equipments':         'company-btn-sm'
-};
-
-function showScreen(screen) {
-  document.getElementById('pin-screen').classList.remove('active');
-  document.getElementById('company-screen').classList.remove('active');
-  document.getElementById('app').style.display = 'none';
-  if (screen === 'pin')          document.getElementById('pin-screen').classList.add('active');
-  else if (screen === 'company') document.getElementById('company-screen').classList.add('active');
-  else if (screen === 'app')     document.getElementById('app').style.display = 'block';
-}
-
-function toTitleCase(str) {
-  return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function makeFilename(consignorName, invoiceNumber) {
-  const name = (consignorName || 'Invoice').trim();
-  const num  = invoiceNumber ? invoiceNumber.split('/').pop() : '000';
-  return `${name}_${num}.pdf`;
-}
-
-const PLACES = [
-  {n:'Hubballi',p:'580026'},{n:'Gadag',p:'582102'},
-  {n:'Dandeli',p:'581325'},{n:'Sirsi',p:'581401'},
-  {n:'Koppal',p:'583231'},{n:'Hole Alur',p:'582102'},
-  {n:'Karwar',p:'581301'},{n:'Mundgod',p:'581349'},
-  {n:'Navalgundu',p:'582208'},{n:'Navalgunte',p:'580026'},
-  {n:'Belur Cross',p:'587114'},{n:'Mirjan',p:'581440'},
-  {n:'Dharwad',p:'580001'},{n:'Bengaluru',p:'560001'},
-  {n:'Mysuru',p:'570001'},{n:'Belagavi',p:'590001'},
-  {n:'Davangere',p:'577001'},{n:'Shivamogga',p:'577201'},
-  {n:'Tumakuru',p:'572101'},{n:'Raichur',p:'584101'},
-  {n:'Bidar',p:'585401'},{n:'Vijayapura',p:'586101'},
-  {n:'Kalaburagi',p:'585101'},{n:'Hassan',p:'573201'},
-  {n:'Mangaluru',p:'575001'},{n:'Udupi',p:'576101'},
-  {n:'Chitradurga',p:'577501'},{n:'Haveri',p:'581110'},
-  {n:'Bagalkot',p:'587101'},{n:'Ranebennur',p:'581115'},
-  {n:'Savanur',p:'581118'},{n:'Shiggaon',p:'581205'},
-  {n:'Kundgol',p:'582113'},{n:'Nargund',p:'582207'},
-  {n:'Ron',p:'582209'},{n:'Ankola',p:'581314'},
-  {n:'Kumta',p:'581343'},{n:'Honnavar',p:'581334'},
-  {n:'Bhatkal',p:'581320'},{n:'Yellapur',p:'581359'},
-  {n:'Haliyal',p:'581329'},{n:'Joida',p:'581186'},
-  {n:'Karkal',p:'574104'},{n:'Bantval',p:'574219'},
-  {n:'Puttur',p:'574201'},{n:'Sullia',p:'574239'},
-  {n:'Madikeri',p:'571201'},{n:'Sagara',p:'577401'},
-  {n:'Tirthahalli',p:'577432'},{n:'Badami',p:'587201'},
-  {n:'Hospet',p:'583201'},{n:'Gangavathi',p:'583227'},
-  {n:'Sindhanur',p:'584128'},{n:'Manvi',p:'584123'},
-  {n:'Gokak',p:'591307'},{n:'Chikodi',p:'591201'},
-  {n:'Athani',p:'591304'},{n:'Nippani',p:'591237'},
-  {n:'Bommasandra',p:'560099'},{n:'Anekkal',p:'560099'},
-  {n:'Avarage',p:'577005'},{n:'Lokikere',p:'577005'},
-];
-
-function filterPlaces() {
-  const val = document.getElementById('placeInput').value.trim().toLowerCase();
-  const list = document.getElementById('acList');
-  if (val.length < 2) { list.style.display = 'none'; return; }
-  const matches = PLACES.filter(p => p.n.toLowerCase().includes(val)).slice(0, 8);
-  if (!matches.length) { list.style.display = 'none'; return; }
-  list.innerHTML = matches.map(p =>
-    `<div class="ac-item" onclick="selectPlace('${p.n}','${p.p}')">${p.n}<span class="ac-pin">${p.p}</span></div>`
-  ).join('');
-  list.style.display = 'block';
-}
-function selectPlace(name, pin) {
-  document.getElementById('placeInput').value = name;
-  document.getElementById('pinCode').value = pin;
-  document.getElementById('acList').style.display = 'none';
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('.ac-wrap')) {
-    const l = document.getElementById('acList');
-    if (l) l.style.display = 'none';
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { pin } = req.body;
+    if (!pin) return res.status(400).json({ error: 'PIN required' });
+    const hash = crypto.createHash('sha256').update(pin.toString().trim()).digest('hex');
+    const { data, error } = await supabase
+      .from('users').select('id, username, company_id').eq('pin_hash', hash).single();
+    if (error || !data) return res.status(401).json({ error: 'Invalid PIN' });
+    res.json({ success: true, username: data.username, company_id: data.company_id || null });
+  } catch (err) {
+    console.error('Login error:', err.message);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-function fmt(n) { return Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function fmtQ(n) { return Number(n).toLocaleString('en-IN'); }
-function localDate() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function dispDate(iso) {
-  if (!iso) return '—';
-  const [y,m,d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
-}
-
-const W1 = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
-  'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
-const W2 = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
-function n2w(n) {
-  n = Math.round(n); if (!n) return 'Zero';
-  let w = '';
-  if (n>=10000000){w+=n2w(Math.floor(n/10000000))+' Crore ';n%=10000000;}
-  if (n>=100000)  {w+=n2w(Math.floor(n/100000))+' Lakh ';n%=100000;}
-  if (n>=1000)    {w+=n2w(Math.floor(n/1000))+' Thousand ';n%=1000;}
-  if (n>=100)     {w+=W1[Math.floor(n/100)]+' Hundred ';n%=100;}
-  if (n>=20)      {w+=W2[Math.floor(n/10)]+(n%10?' '+W1[n%10]:'')+' ';n=0;}
-  else if (n)     {w+=W1[n]+' ';}
-  return w.trim();
-}
-function toWords(amt) {
-  const r=Math.floor(amt), p=Math.round((amt-r)*100);
-  return 'Rupees '+n2w(r)+(p?' and '+n2w(p)+' Paise':'')+' Only';
-}
-
-function showSwitchBtn(show) {
-  const btn = document.getElementById('switchBtn');
-  if (btn) btn.style.display = show ? 'inline-block' : 'none';
-}
-
-const WA_ICON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#128C7E"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
-
-async function shareWhatsApp(invoiceId) {
+app.get('/companies', async (req, res) => {
   try {
-    toast('Preparing PDF...');
-    let blob, filename;
-    if (invoiceId) {
-      const inv = allInvoices.find(i => i.id === invoiceId);
-      const r = await fetch(`${API}/invoice/pdf/${invoiceId}`);
-      if (!r.ok) { toast('PDF failed'); return; }
-      blob = await r.blob();
-      filename = makeFilename(inv ? inv.consignor_name : 'Invoice', inv ? inv.invoice_number : '');
-    } else {
-      if (!lastInvoiceData) { toast('No invoice to share'); return; }
-      const r = await fetch(`${API}/invoice/pdf`,{
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(lastInvoiceData)
-      });
-      if (!r.ok) { toast('PDF failed'); return; }
-      blob = await r.blob();
-      filename = makeFilename(lastInvoiceData.consignor_name, lastInvoiceData.invoice_number);
-    }
-    const file = new File([blob], filename, { type: 'application/pdf' });
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: filename.replace('.pdf','') });
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a); URL.revokeObjectURL(url);
-      setTimeout(() => { window.open('https://web.whatsapp.com', '_blank'); }, 500);
-      toast('PDF downloaded — attach in WhatsApp Web');
-    }
-  } catch(e) {
-    if (e.name !== 'AbortError') toast('Share failed');
+    const { data, error } = await supabase
+      .from('companies').select('*').order('sort_order');
+    if (error) return res.status(500).json({ error: 'Could not fetch companies' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
   }
-}
+});
 
-async function doLogin() {
-  const pin = document.getElementById('pinInput').value.trim();
-  if (!pin) return;
-  const btn = document.getElementById('pinBtn');
-  const msg = document.getElementById('pinConnecting');
-  const err = document.getElementById('pinError');
-  btn.disabled = true; btn.textContent = 'Connecting...';
-  msg.textContent = 'Connecting to server...';
-  msg.classList.add('show');
-  err.style.display = 'none';
+app.get('/invoice/next-number/:companyId', async (req, res) => {
   try {
-    const r = await fetch(`${API}/auth/login`,{
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin})
+    const { data, error } = await supabase
+      .from('company_counter')
+      .select('fy_prefix, last_number')
+      .eq('company_id', req.params.companyId)
+      .single();
+    if (error) return res.status(500).json({ error: 'Could not fetch counter' });
+    const next = data.last_number + 1;
+    const padded = String(next).padStart(3, '0');
+    res.json({ invoice_number: `URP/${data.fy_prefix}/${padded}` });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/invoice/generate', async (req, res) => {
+  try {
+    const {
+      company_id, invoice_date, consignor_name, consignor_address,
+      place, pincode, state, state_code, vehicle_number,
+      product_desc, hsn_code, quantity, rate, amount, amount_words,
+      taxable_value, cgst_rate, cgst_amount, sgst_rate, sgst_amount,
+      igst_rate, igst_amount, supply_type
+    } = req.body;
+
+    const { data: counter, error: counterError } = await supabase
+      .from('company_counter')
+      .select('fy_prefix, last_number')
+      .eq('company_id', company_id)
+      .single();
+    if (counterError) return res.status(500).json({ error: 'Counter fetch failed' });
+
+    const today = new Date();
+    const fyStart = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+    const fyEnd = fyStart + 1;
+    const currentPrefix = `${String(fyStart).slice(-2)}-${String(fyEnd).slice(-2)}`;
+
+    let newNumber, newPrefix = counter.fy_prefix;
+    if (currentPrefix !== counter.fy_prefix) {
+      newNumber = 1; newPrefix = currentPrefix;
+    } else {
+      newNumber = counter.last_number + 1;
+    }
+
+    const padded = String(newNumber).padStart(3, '0');
+    const invoice_number = `URP/${newPrefix}/${padded}`;
+
+    const { error: insertError } = await supabase.from('invoices').insert({
+      company_id, invoice_number, invoice_date, consignor_name, consignor_address,
+      place, pincode, state, state_code, vehicle_number,
+      product_desc, hsn_code, quantity, rate, amount, amount_words,
+      taxable_value, cgst_rate, cgst_amount, sgst_rate, sgst_amount,
+      igst_rate, igst_amount, supply_type
     });
-    const d = await r.json();
-    if (d.success) {
-      sessionStorage.setItem('urp_auth','1');
-      msg.textContent = 'Loading...';
-      const rc = await fetch(`${API}/companies`);
-      allCompanies = await rc.json();
-      msg.classList.remove('show');
-      if (d.company_id) {
-        const co = allCompanies.find(c => c.id === d.company_id);
-        if (co) {
-          sessionStorage.setItem('urp_company', JSON.stringify(co));
-          sessionStorage.setItem('urp_locked', d.company_id);
-          currentCompany = co;
-          applyScheme(co.name);
-          showScreen('app');
-          document.getElementById('headerTitle').textContent = co.name;
-          document.getElementById('headerSub').textContent   = 'GST: ' + co.gst;
-          document.getElementById('invoiceDate').value = localDate();
-          showSwitchBtn(false);
-          loadNextNumber(); recalc();
-        }
-      } else {
-        sessionStorage.removeItem('urp_locked');
-        renderCompanyList();
-        showScreen('company');
+
+    if (insertError) {
+      console.error('Insert error:', insertError.message);
+      return res.status(500).json({ error: 'Invoice save failed' });
+    }
+
+    await supabase.from('company_counter')
+      .update({ fy_prefix: newPrefix, last_number: newNumber, updated_at: new Date() })
+      .eq('company_id', company_id);
+
+    res.json({ success: true, invoice_number });
+  } catch (err) {
+    console.error('Generate error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/invoices/:id', async (req, res) => {
+  try {
+    const {
+      invoice_date, consignor_name, consignor_address,
+      place, pincode, state, state_code, vehicle_number,
+      product_desc, hsn_code, quantity, rate, amount, amount_words,
+      taxable_value, cgst_rate, cgst_amount, sgst_rate, sgst_amount,
+      igst_rate, igst_amount, supply_type
+    } = req.body;
+    const { error } = await supabase.from('invoices').update({
+      invoice_date, consignor_name, consignor_address,
+      place, pincode, state, state_code, vehicle_number,
+      product_desc, hsn_code, quantity, rate, amount, amount_words,
+      taxable_value, cgst_rate, cgst_amount, sgst_rate, sgst_amount,
+      igst_rate, igst_amount, supply_type
+    }).eq('id', req.params.id);
+    if (error) return res.status(500).json({ error: 'Update failed' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/invoices/:id', async (req, res) => {
+  try {
+    const { data: inv, error: fetchError } = await supabase
+      .from('invoices').select('invoice_number, company_id').eq('id', req.params.id).single();
+    if (fetchError) return res.status(404).json({ error: 'Invoice not found' });
+
+    const { error: deleteError } = await supabase
+      .from('invoices').delete().eq('id', req.params.id);
+    if (deleteError) return res.status(500).json({ error: 'Delete failed' });
+
+    const { data: counter } = await supabase
+      .from('company_counter')
+      .select('fy_prefix, last_number')
+      .eq('company_id', inv.company_id)
+      .single();
+
+    const parts = inv.invoice_number.split('/');
+    const deletedPrefix = parts[1];
+    const deletedNumber = parseInt(parts[2], 10);
+
+    if (deletedPrefix === counter.fy_prefix && deletedNumber === counter.last_number) {
+      const { data: remaining } = await supabase
+        .from('invoices')
+        .select('invoice_number')
+        .eq('company_id', inv.company_id)
+        .like('invoice_number', `URP/${deletedPrefix}/%`)
+        .order('invoice_number', { ascending: false })
+        .limit(1);
+
+      let newLastNumber = 0;
+      if (remaining && remaining.length > 0) {
+        const remainParts = remaining[0].invoice_number.split('/');
+        newLastNumber = parseInt(remainParts[2], 10);
       }
-    } else {
-      err.textContent = 'Incorrect PIN. Try again.';
-      err.style.display = 'block';
-      document.getElementById('pinInput').value = '';
-    }
-  } catch(e) {
-    err.textContent = 'Server starting up. Wait 30 seconds and try again.';
-    err.style.display = 'block';
-  }
-  btn.disabled = false; btn.textContent = 'Unlock';
-  msg.classList.remove('show');
-}
-document.getElementById('pinInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
-function doLogout() {
-  sessionStorage.removeItem('urp_auth');
-  sessionStorage.removeItem('urp_company');
-  sessionStorage.removeItem('urp_locked');
-  currentCompany = null; allCompanies = [];
-  showScreen('pin');
-  document.getElementById('pinInput').value = '';
-  document.getElementById('pinError').style.display = 'none';
-}
-
-function switchCompany() {
-  const locked = sessionStorage.getItem('urp_locked');
-  if (locked) return;
-  sessionStorage.removeItem('urp_company');
-  currentCompany = null;
-  renderCompanyList();
-  showScreen('company');
-}
-
-function renderCompanyList() {
-  if (!allCompanies.length) {
-    document.getElementById('companyList').innerHTML = '<div class="empty">Could not load. Try logging out and back in.</div>';
-    return;
-  }
-  document.getElementById('companyList').innerHTML = allCompanies.map(co => {
-    const cls = COMPANY_CLASSES[co.name] || 'company-btn-sm';
-    return `
-      <button type="button" class="company-btn ${cls}" onclick="selectCompany('${co.id}')">
-        <div class="company-btn-name">${co.name}</div>
-        <div class="company-btn-gst">GST: ${co.gst}</div>
-      </button>`;
-  }).join('');
-}
-
-function selectCompany(id) {
-  currentCompany = allCompanies.find(c => c.id === id);
-  sessionStorage.setItem('urp_company', JSON.stringify(currentCompany));
-  applyScheme(currentCompany.name);
-  showScreen('app');
-  document.getElementById('headerTitle').textContent = currentCompany.name;
-  document.getElementById('headerSub').textContent   = 'GST: ' + currentCompany.gst;
-  document.getElementById('invoiceDate').value = localDate();
-  showSwitchBtn(true);
-  loadNextNumber(); recalc();
-}
-
-async function loadNextNumber() {
-  try {
-    const r = await fetch(`${API}/invoice/next-number/${currentCompany.id}`);
-    const d = await r.json();
-    document.getElementById('invoiceNo').value = d.invoice_number;
-  } catch(e) { document.getElementById('invoiceNo').value = 'Error'; }
-}
-
-function recalc() {
-  const qty  = parseFloat(document.getElementById('quantity').value)||0;
-  const rate = parseFloat(document.getElementById('rate').value)||0;
-  const amt  = qty*rate;
-  document.getElementById('s-qty').textContent   = fmtQ(qty)+' Kgs';
-  document.getElementById('s-rate').textContent  = '₹ '+fmt(rate)+' / Kg';
-  document.getElementById('s-total').textContent = '₹ '+fmt(amt);
-  document.getElementById('amountWords').textContent = amt>0 ? toWords(amt) : '—';
-}
-
-function getHSN() {
-  const sel = document.getElementById('hsnCode').value;
-  if (sel === 'custom_hsn') return document.getElementById('customHsn').value.trim() || '—';
-  return sel;
-}
-
-async function generateInvoice() {
-  const rawName = document.getElementById('consignorName').value.trim();
-  const qty     = parseFloat(document.getElementById('quantity').value)||0;
-  const rate    = parseFloat(document.getElementById('rate').value)||0;
-  if (!rawName) { toast('Enter consignor name'); return; }
-  if (!qty)     { toast('Enter quantity'); return; }
-  if (!rate)    { toast('Enter rate'); return; }
-
-  const name = toTitleCase(rawName);
-  document.getElementById('consignorName').value = name;
-
-  const amt   = qty*rate;
-  const date  = document.getElementById('invoiceDate').value;
-  const place = document.getElementById('placeInput').value.trim();
-  const pin   = document.getElementById('pinCode').value.trim();
-  const veh   = document.getElementById('vehicleNo').value.trim().toUpperCase();
-  const addr  = document.getElementById('consignorAddress').value.trim();
-  const state = document.getElementById('stateName').value.trim();
-  const sc    = document.getElementById('stateCode').value.trim();
-  const hsn   = getHSN();
-  let desc    = document.getElementById('productDesc').value;
-  if (desc==='Custom') desc = document.getElementById('customDesc').value.trim()||'—';
-  const words = toWords(amt);
-
-  const body = {
-    company_id: currentCompany.id,
-    invoice_date:date, consignor_name:name, consignor_address:addr,
-    place, pincode:pin, state, state_code:sc, vehicle_number:veh,
-    product_desc:desc, hsn_code:hsn, quantity:qty, rate, amount:amt, amount_words:words
-  };
-
-  const btn = document.getElementById('btnGenerate');
-  btn.disabled = true; btn.textContent = 'Saving...';
-
-  try {
-    let invoiceNumber;
-    if (editMode && currentInvoiceId) {
-      const r = await fetch(`${API}/invoices/${currentInvoiceId}`,{
-        method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-      });
-      const d = await r.json();
-      if (!d.success) { toast('Update failed'); btn.disabled=false; btn.textContent='Update Invoice'; return; }
-      invoiceNumber = document.getElementById('invoiceNo').value;
-      toast('Invoice updated ✓');
-      editMode = false; currentInvoiceId = null;
-    } else {
-      const r = await fetch(`${API}/invoice/generate`,{
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-      });
-      const d = await r.json();
-      if (!d.success) { toast('Save failed'); btn.disabled=false; btn.textContent='Generate & Save Invoice'; return; }
-      invoiceNumber = d.invoice_number;
-      toast(invoiceNumber+' saved ✓');
+      await supabase.from('company_counter')
+        .update({ last_number: newLastNumber, updated_at: new Date() })
+        .eq('company_id', inv.company_id);
     }
 
-    // Success — hide Generate, show WhatsApp + PDF
-    lastInvoiceData = { ...body, invoice_number: invoiceNumber };
-    document.getElementById('successTitle').textContent  = 'Invoice Saved';
-    document.getElementById('successMsg').textContent    = `${invoiceNumber} · ${name} · ₹${fmt(amt)}`;
-    document.getElementById('successBox').style.display  = 'block';
-    document.getElementById('btnGenerate').style.display = 'none';
-    document.getElementById('btnWhatsApp').style.display = 'block';
-    document.getElementById('btnPDF').style.display      = 'block';
-    document.getElementById('invoiceNo').value           = invoiceNumber;
-
-    // Clear form fields after 1.5s — keep buttons as is
-    setTimeout(() => {
-      ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
-        document.getElementById(id).value = '';
-      });
-      document.getElementById('rate').value       = '8';
-      document.getElementById('stateName').value  = 'Karnataka';
-      document.getElementById('stateCode').value  = '29';
-      document.getElementById('invoiceDate').value = localDate();
-      document.getElementById('customDescWrap').style.display = 'none';
-      document.getElementById('customHsnWrap').style.display  = 'none';
-      recalc();
-      loadNextNumber();
-    }, 1500);
-
-  } catch(e) {
-    toast('Network error');
-    btn.disabled = false;
-    btn.textContent = editMode ? 'Update Invoice' : 'Generate & Save Invoice';
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
   }
-}
+});
 
-async function downloadPDF() {
-  const data = lastInvoiceData;
-  if (!data) { toast('No invoice to download'); return; }
-  const btn = document.getElementById('btnPDF');
-  btn.disabled=true; btn.textContent='Generating...';
-  toast('Generating PDF...');
+app.get('/invoices/:companyId', async (req, res) => {
   try {
-    const r = await fetch(`${API}/invoice/pdf`,{
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
-    });
-    if (!r.ok) { toast('PDF failed'); btn.disabled=false; btn.textContent='⬇ Download PDF'; return; }
-    const blob = await r.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href=url; a.download=makeFilename(data.consignor_name, data.invoice_number);
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    toast('PDF downloaded ✓');
-  } catch(e) { toast('Download failed'); }
-  btn.disabled=false; btn.textContent='⬇ Download PDF';
-}
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('company_id', req.params.companyId)
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: 'Could not fetch invoices' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
-function resetForm() {
-  ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
-    document.getElementById(id).value = '';
+app.get('/invoice/single/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('invoices').select('*').eq('id', req.params.id).single();
+    if (error) return res.status(500).json({ error: 'Invoice not found' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── PDF GENERATOR ────────────────────────────────────────
+function generatePDF(inv, company, res) {
+  const useCustomFont = fontsReady &&
+    fs.existsSync(fontPath('Roboto-Regular.ttf')) &&
+    fs.existsSync(fontPath('Roboto-Bold.ttf'));
+
+  const doc = new PDFDocument({ size: 'A4', margin: 0 });
+  const fname = `${(inv.consignor_name||'Invoice').replace(/\s+/g,'_')}_${inv.invoice_number.slice(-3)}.pdf`;
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+  doc.pipe(res);
+
+  if (useCustomFont) {
+    doc.registerFont('R',  fontPath('Roboto-Regular.ttf'));
+    doc.registerFont('B',  fontPath('Roboto-Bold.ttf'));
+    doc.registerFont('I',  fontPath('Roboto-Italic.ttf'));
+    doc.registerFont('BI', fontPath('Roboto-BoldItalic.ttf'));
+  }
+
+  const F   = useCustomFont ? 'R'  : 'Helvetica';
+  const FB  = useCustomFont ? 'B'  : 'Helvetica-Bold';
+  const FBI = useCustomFont ? 'BI' : 'Helvetica-BoldOblique';
+  const RS  = useCustomFont ? '₹' : 'Rs.';
+
+  const PW = 595.28;
+  const PH = 841.89;
+  const M  = 28;
+  const CW = PW - M * 2;
+
+  const LW_HEAVY  = 1.0;
+  const LW_MEDIUM = 0.5;
+  const LW_SUBTLE = 0.3;
+
+  const hasGST = company.has_gst;
+  const isIGST = inv.supply_type === 'interstate';
+
+  function fmtN(n) {
+    return Number(n).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+  function fmtQ(n) { return Number(n).toLocaleString('en-IN'); }
+  function dispDate(d) {
+    if (!d) return '—';
+    const [y,m,day] = d.split('-');
+    return `${day}/${m}/${y}`;
+  }
+  function cellText(text, x, y, w, h, fontSize, font, color, align) {
+    doc.fillColor(color || '#111').fontSize(fontSize).font(font);
+    const textH = fontSize * 1.15;
+    const ty = y + (h - textH) / 2;
+    doc.text(text, x + 4, ty, { width: w - 8, align: align || 'center', lineBreak: false });
+  }
+  function hline(y, lw, color) {
+    doc.moveTo(M, y).lineTo(M + CW, y).lineWidth(lw).strokeColor(color || '#333').stroke();
+  }
+  function vline(x, y1, y2, lw, color) {
+    doc.moveTo(x, y1).lineTo(x, y2).lineWidth(lw).strokeColor(color || '#333').stroke();
+  }
+
+  let y = M;
+
+  // ── HEADER BAND ──────────────────────────────────────
+  const bandH = 28;
+  doc.rect(M, y, CW, bandH).fill('#f0f0f0');
+  cellText('URP PURCHASE', M, y, CW, bandH, 13, FB, '#111', 'center');
+  y += bandH;
+  hline(y, LW_HEAVY, '#333');
+
+  // ── CONSIGNEE / CONSIGNOR ────────────────────────────
+  const colW    = CW / 2;
+  const titleH  = 20;
+  const metaTopY = y;
+
+  doc.rect(M, y, colW, titleH).fill('#f7f7f7');
+  doc.rect(M + colW, y, colW, titleH).fill('#f7f7f7');
+  cellText('CONSIGNEE', M, y, colW, titleH, 8, FB, '#111', 'center');
+  cellText('CONSIGNOR', M + colW, y, colW, titleH, 8, FB, '#111', 'center');
+
+  y += titleH;
+  hline(y, LW_MEDIUM, '#333');
+
+  const colContentY = y;
+
+  // Consignee
+  let cy = colContentY + 8;
+  doc.fillColor('#111').fontSize(10).font(FB).text(company.name, M + 8, cy); cy += 14;
+  doc.fillColor('#222').fontSize(8.5).font(F);
+  company.address.split('\n').forEach(line => {
+    if (line.trim()) { doc.text(line.trim(), M + 8, cy); cy += 12; }
   });
-  document.getElementById('rate').value       = '8';
-  document.getElementById('stateName').value  = 'Karnataka';
-  document.getElementById('stateCode').value  = '29';
-  document.getElementById('invoiceDate').value = localDate();
-  document.getElementById('successBox').style.display  = 'none';
-  document.getElementById('btnWhatsApp').style.display = 'none';
-  document.getElementById('btnPDF').style.display      = 'none';
-  document.getElementById('btnGenerate').style.display = 'block';
-  document.getElementById('btnGenerate').textContent   = 'Generate & Save Invoice';
-  document.getElementById('customDescWrap').style.display = 'none';
-  document.getElementById('customHsnWrap').style.display  = 'none';
-  editMode=false; currentInvoiceId=null; lastInvoiceData=null;
-  loadNextNumber(); recalc();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
+  doc.fillColor('#111').font(F).text(company.state, M + 8, cy); cy += 12;
+  doc.fillColor('#111').font(FB).text(`State Code: ${company.state_code}`, M + 8, cy); cy += 12;
+  doc.fillColor('#111').fontSize(8.5).font(FB).text(`GST: ${company.gst}`, M + 8, cy);
+  const leftEndY = cy + 14;
 
-function showTab(t) {
-  document.getElementById('sec-new').style.display  = t==='new'  ? 'block':'none';
-  document.getElementById('sec-hist').style.display = t==='hist' ? 'block':'none';
-  document.getElementById('tab-new').classList.toggle('active',  t==='new');
-  document.getElementById('tab-hist').classList.toggle('active', t==='hist');
-  if (t==='hist') loadHistory();
-}
-
-async function loadHistory() {
-  const list = document.getElementById('hist-list');
-  list.innerHTML = '<div class="loading-msg">Loading...</div>';
-  try {
-    const r = await fetch(`${API}/invoices/${currentCompany.id}`);
-    allInvoices = await r.json();
-    document.getElementById('hist-count').textContent = `${allInvoices.length} invoices`;
-    if (!allInvoices.length) { list.innerHTML='<div class="empty">No invoices yet.</div>'; return; }
-
-    const groups = {};
-    allInvoices.forEach(inv => {
-      const d = new Date(inv.invoice_date);
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      const label = d.toLocaleString('en-IN', { month:'long', year:'numeric' });
-      if (!groups[key]) groups[key] = { label, invoices:[], total:0 };
-      groups[key].invoices.push(inv);
-      groups[key].total += Number(inv.amount);
+  // Consignor
+  let ry = colContentY + 8;
+  doc.fillColor('#111').fontSize(10).font(FB)
+     .text(inv.consignor_name || '—', M + colW + 8, ry, { width: colW - 16 });
+  ry += 14;
+  doc.fillColor('#222').fontSize(8.5).font(F);
+  if (inv.consignor_address) {
+    inv.consignor_address.split('\n').forEach(line => {
+      if (line.trim()) { doc.text(line.trim(), M + colW + 8, ry, { width: colW - 16 }); ry += 12; }
     });
+  }
+  if (inv.place || inv.pincode) {
+    doc.text([inv.place, inv.pincode ? `— ${inv.pincode}` : ''].filter(Boolean).join(' '),
+      M + colW + 8, ry, { width: colW - 16 }); ry += 12;
+  }
+  if (inv.state) {
+    doc.fillColor('#111').font(F).text(inv.state, M + colW + 8, ry, { width: colW - 16 }); ry += 12;
+  }
+  if (inv.state_code) {
+    doc.fillColor('#111').font(FB)
+       .text(`State Code: ${inv.state_code}`, M + colW + 8, ry, { width: colW - 16 }); ry += 12;
+  }
+  const rightEndY = ry + 2;
 
-    const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
-    list.innerHTML = sortedKeys.map((key, idx) => {
-      const g = groups[key];
-      const isOpen = idx === 0;
-      return `
-        <div class="month-group">
-          <div class="month-header" onclick="toggleMonth('${key}')">
-            <div>
-              <div class="month-name">${g.label}</div>
-              <div class="month-meta">${g.invoices.length} invoice${g.invoices.length>1?'s':''} · ₹${fmt(g.total)}</div>
-            </div>
-            <div class="month-chevron" id="chev-${key}">${isOpen?'▲':'▼'}</div>
-          </div>
-          <div class="month-body" id="month-${key}" style="display:${isOpen?'block':'none'}">
-            ${g.invoices.map(inv => `
-              <div class="hist-item">
-                <div class="hist-top">
-                  <div class="hist-no">${inv.invoice_number}</div>
-                </div>
-                <div class="hist-name">${inv.consignor_name}</div>
-                <div class="hist-meta">${dispDate(inv.invoice_date)} · ${fmtQ(inv.quantity)} Kgs · ₹${fmt(inv.amount)}</div>
-                <div class="hist-actions">
-                  <button class="btn-sm btn-wa-sm" onclick="shareWhatsApp('${inv.id}')">${WA_ICON} WhatsApp</button>
-                  <button class="btn-sm btn-pdf-sm" onclick="downloadHistPDF('${inv.id}','${inv.consignor_name.replace(/'/g,"\\'")}','${inv.invoice_number}')">⬇ PDF</button>
-                  <span class="hist-divider"></span>
-                  <button class="btn-sm btn-edit-sm" onclick="editInvoice('${inv.id}')">Edit</button>
-                  <button class="btn-sm btn-del-sm" onclick="deleteInvoice('${inv.id}','${inv.invoice_number}')">Delete</button>
-                </div>
-              </div>`).join('')}
-          </div>
-        </div>`;
-    }).join('');
-  } catch(e) { list.innerHTML='<div class="empty">Could not load.</div>'; }
-}
+  const metaContentH = Math.max(leftEndY, rightEndY) - colContentY + 8;
+  y = colContentY + metaContentH;
 
-function toggleMonth(key) {
-  const body = document.getElementById(`month-${key}`);
-  const chev = document.getElementById(`chev-${key}`);
-  const isOpen = body.style.display !== 'none';
-  body.style.display = isOpen ? 'none' : 'block';
-  chev.textContent = isOpen ? '▼' : '▲';
-}
+  vline(M + colW, metaTopY, y, LW_MEDIUM, '#333');
+  hline(y, LW_HEAVY, '#333');
 
-async function editInvoice(id) {
-  const inv = allInvoices.find(i => i.id===id);
-  if (!inv) return;
-  editMode=true; currentInvoiceId=id;
-  document.getElementById('consignorName').value    = inv.consignor_name||'';
-  document.getElementById('consignorAddress').value = inv.consignor_address||'';
-  document.getElementById('placeInput').value       = inv.place||'';
-  document.getElementById('pinCode').value          = inv.pincode||'';
-  document.getElementById('stateName').value        = inv.state||'Karnataka';
-  document.getElementById('stateCode').value        = inv.state_code||'29';
-  document.getElementById('vehicleNo').value        = inv.vehicle_number||'';
-  document.getElementById('invoiceDate').value      = inv.invoice_date||'';
-  document.getElementById('invoiceNo').value        = inv.invoice_number||'';
-  document.getElementById('quantity').value         = inv.quantity||'';
-  document.getElementById('rate').value             = inv.rate||'8';
-  document.getElementById('btnGenerate').style.display = 'block';
-  document.getElementById('btnGenerate').textContent   = 'Update Invoice';
-  document.getElementById('successBox').style.display  = 'none';
-  document.getElementById('btnWhatsApp').style.display = 'none';
-  document.getElementById('btnPDF').style.display      = 'none';
-  showTab('new'); recalc();
-  toast('Editing '+inv.invoice_number);
-  window.scrollTo({top:0,behavior:'smooth'});
-}
+  // ── INFO STRIP ───────────────────────────────────────
+  const infoH = 34;
+  const infoW = CW / 3;
+  doc.rect(M, y, CW, infoH).fill('#f5f5f5');
 
-async function deleteInvoice(id, num) {
-  if (!confirm(`Delete ${num}?\nThis cannot be undone.`)) return;
-  try {
-    const r = await fetch(`${API}/invoices/${id}`,{method:'DELETE'});
-    const d = await r.json();
-    if (d.success) { toast(num+' deleted'); loadHistory(); loadNextNumber(); }
-    else toast('Delete failed');
-  } catch(e) { toast('Network error'); }
-}
+  [
+    { label: 'INVOICE NUMBER', value: inv.invoice_number },
+    { label: 'DATE',           value: dispDate(inv.invoice_date) },
+    { label: 'VEHICLE NUMBER', value: inv.vehicle_number || '—' }
+  ].forEach((item, i) => {
+    const cx = M + i * infoW;
+    if (i > 0) vline(cx, y, y + infoH, LW_MEDIUM, '#ccc');
+    const labelH = 9, valueH = 11, pairH = labelH + 3 + valueH;
+    const pairY = y + (infoH - pairH) / 2;
+    doc.fillColor('#555').fontSize(7).font(FB)
+       .text(item.label, cx + 4, pairY, { width: infoW - 8, align: 'center', lineBreak: false });
+    doc.fillColor('#111').fontSize(10).font(FB)
+       .text(item.value, cx + 4, pairY + labelH + 3, { width: infoW - 8, align: 'center', lineBreak: false });
+  });
 
-async function downloadHistPDF(id, consignorName, invoiceNumber) {
-  toast('Generating PDF...');
-  try {
-    const r = await fetch(`${API}/invoice/pdf/${id}`);
-    if (!r.ok) { toast('PDF failed'); return; }
-    const blob = await r.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href=url; a.download=makeFilename(consignorName, invoiceNumber);
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    toast('PDF downloaded ✓');
-  } catch(e) { toast('Download failed'); }
-}
+  y += infoH;
+  hline(y, LW_HEAVY, '#333');
 
-function downloadCSV() {
-  if (!allInvoices.length) { toast('No invoices to download'); return; }
-  const headers = ['Invoice No','Date','Consignor','Address','Place','Pincode','State','Vehicle','Description','HSN','Qty (Kg)','Rate','Amount','Amount in Words'];
-  const rows = allInvoices.map(i => [
-    i.invoice_number, i.invoice_date, i.consignor_name,
-    i.consignor_address||'', i.place||'', i.pincode||'',
-    i.state||'', i.vehicle_number||'', i.product_desc,
-    i.hsn_code, i.quantity, i.rate, i.amount, i.amount_words
-  ].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','));
-  const csv  = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv],{type:'text/csv'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href=url; a.download=`URP_${currentCompany.name.replace(/\s+/g,'_')}_${new Date().getFullYear()}.csv`;
-  a.click(); URL.revokeObjectURL(url);
-  toast('CSV downloaded ✓');
-}
+  // ── TABLE COLUMNS ────────────────────────────────────
+  const cNum  = 24;
+  const cHSN  = 60;
+  const cQty  = 60;
+  const cRate = 60;
+  const cAmt  = 90;
+  const cDesc = CW - cNum - cHSN - cQty - cRate - cAmt;
 
-document.getElementById('productDesc').addEventListener('change', function() {
-  document.getElementById('customDescWrap').style.display = this.value==='Custom'?'block':'none';
-});
-document.getElementById('hsnCode').addEventListener('change', function() {
-  document.getElementById('customHsnWrap').style.display = this.value==='custom_hsn'?'block':'none';
-});
-['quantity','rate'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
-document.getElementById('vehicleNo').addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+  const xNum  = M;
+  const xDesc = xNum  + cNum;
+  const xHSN  = xDesc + cDesc;
+  const xQty  = xHSN  + cHSN;
+  const xRate = xQty  + cQty;
+  const xAmt  = xRate + cRate;
 
-fetch(`${API}/health`).catch(()=>{});
+  // ── TABLE HEADER ─────────────────────────────────────
+  const thH = 22;
+  doc.rect(M, y, CW, thH).fill('#444');
+  [
+    { x: xNum,  w: cNum,  label: '#' },
+    { x: xDesc, w: cDesc, label: 'Description of Goods', align: 'left' },
+    { x: xHSN,  w: cHSN,  label: 'HSN/SAC' },
+    { x: xQty,  w: cQty,  label: 'Qty (Kg)' },
+    { x: xRate, w: cRate, label: 'Rate/Kg' },
+    { x: xAmt,  w: cAmt,  label: `Amount (${RS})` },
+  ].forEach((col, i) => {
+    if (i > 0) vline(col.x, y, y + thH, LW_SUBTLE, '#888');
+    cellText(col.label, col.x, y, col.w, thH, 8.5, FB, 'white', col.align || 'center');
+  });
+  y += thH;
 
-(async function init() {
-  const auth    = sessionStorage.getItem('urp_auth');
-  const savedCo = sessionStorage.getItem('urp_company');
-  const locked  = sessionStorage.getItem('urp_locked');
+  // ── TABLE ROW ────────────────────────────────────────
+  const rowH = 30;
+  doc.rect(M, y, CW, rowH).fill('#fafafa');
+  const taxableVal = hasGST ? Number(inv.taxable_value) : Number(inv.amount);
+  [
+    { x: xNum,  w: cNum,  text: '1' },
+    { x: xDesc, w: cDesc, text: inv.product_desc || '—', align: 'left' },
+    { x: xHSN,  w: cHSN,  text: inv.hsn_code || '—' },
+    { x: xQty,  w: cQty,  text: fmtQ(inv.quantity) },
+    { x: xRate, w: cRate, text: `${RS} ${fmtN(inv.rate)}` },
+    { x: xAmt,  w: cAmt,  text: `${RS} ${fmtN(taxableVal)}` },
+  ].forEach((col, i) => {
+    if (i > 0) vline(col.x, y, y + rowH, LW_SUBTLE, '#ddd');
+    cellText(col.text, col.x, y, col.w, rowH, 9, F, '#111', col.align || 'center');
+  });
+  y += rowH;
 
-  if (auth === '1' && savedCo) {
-    currentCompany = JSON.parse(savedCo);
-    applyScheme(currentCompany.name);
-    showScreen('app');
-    document.getElementById('headerTitle').textContent = currentCompany.name;
-    document.getElementById('headerSub').textContent   = 'GST: ' + currentCompany.gst;
-    document.getElementById('invoiceDate').value = localDate();
-    showSwitchBtn(!locked);
-    loadNextNumber(); recalc();
-    fetch(`${API}/companies`).then(r=>r.json()).then(d=>{ allCompanies=d; }).catch(()=>{});
-  } else if (auth === '1') {
-    showScreen('company');
-    try {
-      const r = await fetch(`${API}/companies`);
-      allCompanies = await r.json();
-      renderCompanyList();
-    } catch(e) {
-      document.getElementById('companyList').innerHTML = '<div class="empty">Could not load. Try logging out and back in.</div>';
+  // ── BOTTOM SECTION ───────────────────────────────────
+  const taxRowH  = 22;
+  const totalH   = 26;
+  const wordsH   = 30;
+  const signH    = 60;
+
+  // Calculate bottom height based on GST
+  let bottomH = totalH + wordsH + signH;
+  if (hasGST) {
+    bottomH += isIGST ? taxRowH : taxRowH * 2; // 1 row for IGST, 2 rows for CGST+SGST
+    bottomH += taxRowH; // taxable value row
+  }
+
+  const bottomY = PH - M - bottomH;
+  const BLW = LW_SUBTLE;
+  const BLC = '#999';
+
+  hline(bottomY, LW_HEAVY, '#333');
+  let by = bottomY;
+
+  if (hasGST) {
+    // ── TAXABLE VALUE ROW ────────────────────────────
+    doc.rect(M, by, CW, taxRowH).fill('#fafafa');
+    const labelW = cNum + cDesc + cHSN + cQty;
+    cellText('Taxable Value :', xNum, by, labelW, taxRowH, 8.5, FB, '#333', 'right');
+    vline(xRate, by, by + taxRowH, BLW, BLC);
+    vline(xAmt,  by, by + taxRowH, BLW, BLC);
+    cellText(`${RS} ${fmtN(inv.taxable_value)}`, xAmt, by, cAmt, taxRowH, 9, F, '#111', 'center');
+    hline(by + taxRowH, BLW, BLC);
+    by += taxRowH;
+
+    if (isIGST) {
+      // ── IGST ROW ──────────────────────────────────
+      doc.rect(M, by, CW, taxRowH).fill('#fafafa');
+      cellText(`IGST @ ${inv.igst_rate}% :`, xNum, by, labelW, taxRowH, 8.5, FB, '#333', 'right');
+      vline(xRate, by, by + taxRowH, BLW, BLC);
+      vline(xAmt,  by, by + taxRowH, BLW, BLC);
+      cellText(`${RS} ${fmtN(inv.igst_amount)}`, xAmt, by, cAmt, taxRowH, 9, F, '#111', 'center');
+      hline(by + taxRowH, BLW, BLC);
+      by += taxRowH;
+    } else {
+      // ── CGST ROW ──────────────────────────────────
+      doc.rect(M, by, CW, taxRowH).fill('#fafafa');
+      cellText(`CGST @ ${inv.cgst_rate}% :`, xNum, by, labelW, taxRowH, 8.5, FB, '#333', 'right');
+      vline(xRate, by, by + taxRowH, BLW, BLC);
+      vline(xAmt,  by, by + taxRowH, BLW, BLC);
+      cellText(`${RS} ${fmtN(inv.cgst_amount)}`, xAmt, by, cAmt, taxRowH, 9, F, '#111', 'center');
+      hline(by + taxRowH, BLW, BLC);
+      by += taxRowH;
+
+      // ── SGST ROW ──────────────────────────────────
+      doc.rect(M, by, CW, taxRowH).fill('#fafafa');
+      cellText(`SGST @ ${inv.sgst_rate}% :`, xNum, by, labelW, taxRowH, 8.5, FB, '#333', 'right');
+      vline(xRate, by, by + taxRowH, BLW, BLC);
+      vline(xAmt,  by, by + taxRowH, BLW, BLC);
+      cellText(`${RS} ${fmtN(inv.sgst_amount)}`, xAmt, by, cAmt, taxRowH, 9, F, '#111', 'center');
+      hline(by + taxRowH, BLW, BLC);
+      by += taxRowH;
     }
   } else {
-    showScreen('pin');
+    // ── NON-GST TOTAL ROW (Regal) ────────────────────
+    doc.rect(M, by, CW, totalH).fill('#fafafa');
+    const totalLabelW = cNum + cDesc + cHSN;
+    cellText('Total :', xNum, by, totalLabelW, totalH, 9, FB, '#333', 'right');
+    vline(xQty,  by, by + totalH, BLW, BLC);
+    cellText(`${fmtQ(inv.quantity)} Kgs`, xQty, by, cQty, totalH, 10, FB, '#111', 'center');
+    vline(xRate, by, by + totalH, BLW, BLC);
+    vline(xAmt,  by, by + totalH, BLW, BLC);
+    cellText(`${RS} ${fmtN(inv.amount)}`, xAmt, by, cAmt, totalH, 10, FB, '#111', 'center');
+    hline(by + totalH, BLW, BLC);
+    by += totalH;
   }
-})();
-</script>
-</body>
-</html>
+
+  if (hasGST) {
+    // ── GRAND TOTAL ROW ──────────────────────────────
+    doc.rect(M, by, CW, totalH).fill('#f0f5ff');
+    const totalLabelW = cNum + cDesc + cHSN;
+    cellText('Grand Total :', xNum, by, totalLabelW, totalH, 9, FB, '#054a99', 'right');
+    vline(xQty,  by, by + totalH, BLW, BLC);
+    cellText(`${fmtQ(inv.quantity)} Kgs`, xQty, by, cQty, totalH, 10, FB, '#054a99', 'center');
+    vline(xRate, by, by + totalH, BLW, BLC);
+    vline(xAmt,  by, by + totalH, BLW, BLC);
+    cellText(`${RS} ${fmtN(inv.amount)}`, xAmt, by, cAmt, totalH, 10, FB, '#054a99', 'center');
+    hline(by + totalH, BLW, BLC);
+    by += totalH;
+  }
+
+  // ── AMOUNT IN WORDS ──────────────────────────────────
+  doc.rect(M, by, CW, wordsH).fill('#fffbe6');
+  doc.fillColor('#111').fontSize(7.5).font(FB).text('AMOUNT IN WORDS', M + 8, by + 5);
+  doc.fillColor('#111').fontSize(9).font(FBI)
+     .text(inv.amount_words, M + 8, by + 16, { width: CW - 16, lineBreak: false });
+  hline(by + wordsH, BLW, BLC);
+  by += wordsH;
+
+  // ── SIGNATORY + RCM NOTE ─────────────────────────────
+  doc.rect(M, by, CW, signH).fill('white');
+  if (hasGST) {
+    doc.fillColor('#666').fontSize(7.5).font(F)
+       .text('Tax payable under Reverse Charge Mechanism', M + 8, by + 8);
+  }
+  const sigW = CW * 0.35;
+  const sigX = M + CW - sigW;
+  vline(sigX, by, by + signH, BLW, BLC);
+  doc.fillColor('#111').fontSize(9).font(FB)
+     .text('Authorised Signatory', sigX + 4, by + signH - 14, { width: sigW - 8, align: 'center' });
+
+  // ── OUTER BORDER ─────────────────────────────────────
+  doc.rect(M, M, CW, PH - M * 2).lineWidth(LW_HEAVY).strokeColor('#1a3a5c').stroke();
+  doc.end();
+}
+
+app.post('/invoice/pdf', async (req, res) => {
+  try {
+    const { company_id } = req.body;
+    const { data: company, error } = await supabase
+      .from('companies').select('*').eq('id', company_id).single();
+    if (error) return res.status(404).json({ error: 'Company not found' });
+    generatePDF(req.body, company, res);
+  } catch (err) {
+    console.error('PDF error:', err.message);
+    res.status(500).json({ error: 'PDF failed' });
+  }
+});
+
+app.get('/invoice/pdf/:id', async (req, res) => {
+  try {
+    const { data: inv, error } = await supabase
+      .from('invoices').select('*').eq('id', req.params.id).single();
+    if (error) return res.status(404).json({ error: 'Invoice not found' });
+    const { data: company, error: compError } = await supabase
+      .from('companies').select('*').eq('id', inv.company_id).single();
+    if (compError) return res.status(404).json({ error: 'Company not found' });
+    generatePDF(inv, company, res);
+  } catch (err) {
+    console.error('PDF error:', err.message);
+    res.status(500).json({ error: 'PDF failed' });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Regal URP backend running on port ${PORT}`));
