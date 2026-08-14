@@ -499,20 +499,19 @@ function makeFilename(consignorName, invoiceNumber) {
   return `${name}_${num}.pdf`;
 }
 
-function setSupplyType(type) {
-  supplyType = type;
-  document.getElementById('btnLocal').classList.toggle('active', type === 'local');
-  document.getElementById('btnInterstate').classList.toggle('active', type === 'interstate');
-  recalc();
-}
-
-function applyGSTUI() {
+function filterStates() {
+  const list = document.getElementById('stateAcList');
   const hasGST = currentCompany && currentCompany.has_gst;
-  document.getElementById('supplyTypeWrap').style.display = hasGST ? 'block' : 'none';
-  supplyType = 'local';
-  document.getElementById('btnLocal').classList.add('active');
-  document.getElementById('btnInterstate').classList.remove('active');
-  recalc();
+  if (!hasGST) { list.style.display = 'none'; return; }
+  const val = document.getElementById('stateName').value.trim().toLowerCase();
+  if (val.length === 0 && supplyType === 'interstate') { showAllStates(); return; }
+  if (val.length < 2) { list.style.display = 'none'; return; }
+  const matches = STATES.filter(s => s.n.toLowerCase().includes(val)).slice(0, 8);
+  if (!matches.length) { list.style.display = 'none'; return; }
+  list.innerHTML = matches.map(s =>
+    `<div class="ac-item" onclick="selectState('${s.n.replace(/'/g,"\\'")}','${s.p}')">${s.n}<span class="ac-pin">${s.p}</span></div>`
+  ).join('');
+  list.style.display = 'block';
 }
 
 // ── PLACES ───────────────────────────────────────────────
