@@ -926,6 +926,7 @@ async function generateInvoice() {
     document.getElementById('successTitle').textContent  = 'Invoice Saved';
     document.getElementById('successMsg').textContent    = `${invoiceNumber} · ${name} · ₹${fmt(grandTotal)}`;
     document.getElementById('successBox').style.display  = 'block';
+    document.getElementById('btnGenerate').disabled      = false;
     document.getElementById('btnGenerate').style.display = 'none';
     document.getElementById('btnWhatsApp').style.display = 'block';
     document.getElementById('btnPDF').style.display      = 'block';
