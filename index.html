@@ -143,11 +143,15 @@
   .field input.invalid, .field textarea.invalid {
     border-color: var(--red); background: #fff5f4; box-shadow: 0 0 0 3px rgba(192,57,43,0.12);
   }
+  .field-error {
+    display: none; color: var(--red); font-size: 12px; font-weight: 600; line-height: 1.3;
+  }
+  .field-error.show { display: block; }
   .field select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 13px center; padding-right: 36px;
   }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
 
   .ac-wrap { position: relative; }
   .ac-list {
@@ -214,13 +218,6 @@
   }
   .success-box h3 { font-size: 14px; font-weight: 700; color: #1a6e20; margin-bottom: 4px; }
   .success-box p { font-size: 13px; color: #2a5c3a; }
-
-  .valid-box {
-    background: #fdecea; border: 1px solid #f1b8b2; color: #8e2a1f;
-    border-radius: var(--radius); padding: 12px 16px; margin-bottom: 14px; display: none;
-  }
-  .valid-box h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-  .valid-box ul { margin: 0 0 0 18px; font-size: 13px; line-height: 1.6; }
 
   .hist-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
   .hist-item {
@@ -322,6 +319,7 @@
           <div class="field">
             <label>Vehicle Number *</label>
             <input type="text" id="vehicleNo" placeholder="KA65 1189" />
+            <div class="field-error" id="err-vehicleNo"></div>
           </div>
           <div class="field" id="supplyTypeWrap" style="display:none">
             <label>Supply Type</label>
@@ -339,6 +337,7 @@
           <div class="field">
             <label>Name *</label>
             <input type="text" id="consignorName" placeholder="Party / Supplier name" />
+            <div class="field-error" id="err-consignorName"></div>
           </div>
           <div class="field">
             <label>Address (optional)</label>
@@ -351,10 +350,12 @@
                 <input type="text" id="placeInput" placeholder="Type city..." autocomplete="off" oninput="filterPlaces()" />
                 <div class="ac-list" id="acList" style="display:none"></div>
               </div>
+              <div class="field-error" id="err-placeInput"></div>
             </div>
             <div class="field">
               <label>Pin Code *</label>
               <input type="text" id="pinCode" placeholder="Auto-filled" inputmode="numeric" maxlength="6" />
+              <div class="field-error" id="err-pinCode"></div>
             </div>
           </div>
           <div class="row2">
@@ -409,10 +410,12 @@
             <div class="field">
               <label>Quantity (Kgs) *</label>
               <input type="number" id="quantity" placeholder="0" inputmode="decimal" />
+              <div class="field-error" id="err-quantity"></div>
             </div>
             <div class="field">
               <label>Rate (₹ / Kg) *</label>
               <input type="number" id="rate" value="8" step="0.5" inputmode="decimal" />
+              <div class="field-error" id="err-rate"></div>
             </div>
           </div>
         </div>
@@ -437,11 +440,6 @@
       <div class="success-box" id="successBox">
         <h3 id="successTitle">Invoice Saved</h3>
         <p id="successMsg"></p>
-      </div>
-
-      <div class="valid-box" id="validBox">
-        <h3>Please complete these before saving:</h3>
-        <ul id="validList"></ul>
       </div>
 
       <div class="btn-stack">
@@ -521,63 +519,65 @@ function makeFilename(consignorName, invoiceNumber) {
   return `${name}_${num}.pdf`;
 }
 
-// ── REQUIRED-FIELD VALIDATION ────────────────────────────
-// Fields are checked only when the user tries to save, so they can fill in any order.
+// ── REQUIRED-FIELD VALIDATION (inline messages under each field) ──
+// Checked only when the user taps Generate/Update, so fields can be filled in any order.
 const REQUIRED_FIELDS = ['vehicleNo','consignorName','placeInput','pinCode','quantity','rate'];
 
+function setFieldError(id, msg) {
+  const el = document.getElementById(id);
+  const er = document.getElementById('err-' + id);
+  if (el) el.classList.add('invalid');
+  if (er) { er.textContent = msg; er.classList.add('show'); }
+}
+function clearFieldError(id) {
+  const el = document.getElementById(id);
+  const er = document.getElementById('err-' + id);
+  if (el) el.classList.remove('invalid');
+  if (er) { er.textContent = ''; er.classList.remove('show'); }
+}
 function clearValidation() {
-  REQUIRED_FIELDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('invalid');
-  });
-  const box = document.getElementById('validBox');
-  if (box) box.style.display = 'none';
+  REQUIRED_FIELDS.forEach(clearFieldError);
 }
 
 function validateForm() {
   clearValidation();
-  const missing = [];
-  const flag = (id, msg) => {
-    document.getElementById(id).classList.add('invalid');
-    missing.push({ id, msg });
-  };
+  const errors = [];
+  const flag = (id, msg) => { setFieldError(id, msg); errors.push(id); };
 
   if (!document.getElementById('vehicleNo').value.trim())
-    flag('vehicleNo', 'Vehicle number');
+    flag('vehicleNo', 'Vehicle number is required');
+
   if (!document.getElementById('consignorName').value.trim())
-    flag('consignorName', 'Consignor name');
+    flag('consignorName', 'Consignor name is required');
+
   if (!document.getElementById('placeInput').value.trim())
-    flag('placeInput', 'Place');
+    flag('placeInput', 'Place is required');
 
   const pin = document.getElementById('pinCode').value.trim();
-  if (!pin)                       flag('pinCode', 'Pin code');
-  else if (!/^\d{6}$/.test(pin))  flag('pinCode', 'Pin code (must be exactly 6 digits)');
+  if (!pin)                      flag('pinCode', 'Pin code is required');
+  else if (!/^\d{6}$/.test(pin)) flag('pinCode', 'Pin code must be 6 digits');
 
-  if (!(parseFloat(document.getElementById('quantity').value) > 0))
-    flag('quantity', 'Quantity');
+  const qtyRaw = document.getElementById('quantity').value.trim();
+  if (!qtyRaw)                                       flag('quantity', 'Quantity is required');
+  else if (!(parseFloat(qtyRaw) > 0))                flag('quantity', 'Quantity must be greater than 0');
+
   if (!(parseFloat(document.getElementById('rate').value) > 0))
-    flag('rate', 'Rate');
+    flag('rate', 'Rate must be greater than 0');
 
-  if (!missing.length) return true;
+  if (!errors.length) return true;
 
-  document.getElementById('validList').innerHTML =
-    missing.map(m => `<li>${m.msg}</li>`).join('');
-  document.getElementById('validBox').style.display = 'block';
-  toast(missing.length === 1 ? 'Missing: ' + missing[0].msg : missing.length + ' required fields missing');
+  toast(errors.length === 1 ? '1 required field missing' : errors.length + ' required fields missing');
 
-  const first = document.getElementById(missing[0].id);
+  const first = document.getElementById(errors[0]);
   first.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => first.focus(), 350);
   return false;
 }
 
-// Clear a field's red mark as soon as the user edits it; hide the box when none remain
+// Each message clears the moment its field is edited
 REQUIRED_FIELDS.forEach(id => {
   document.getElementById(id).addEventListener('input', function() {
-    this.classList.remove('invalid');
-    if (!document.querySelector('.field input.invalid, .field textarea.invalid')) {
-      document.getElementById('validBox').style.display = 'none';
-    }
+    clearFieldError(this.id);
   });
 });
 
@@ -720,12 +720,9 @@ function filterPlaces() {
 function selectPlace(name, pin) {
   document.getElementById('placeInput').value = name;
   document.getElementById('pinCode').value = pin;
-  document.getElementById('placeInput').classList.remove('invalid');
-  document.getElementById('pinCode').classList.remove('invalid');
+  clearFieldError('placeInput');
+  clearFieldError('pinCode');
   document.getElementById('acList').style.display = 'none';
-  if (!document.querySelector('.field input.invalid, .field textarea.invalid')) {
-    document.getElementById('validBox').style.display = 'none';
-  }
 }
 
 // ── STATES (Karnataka excluded — that is local supply) ───
