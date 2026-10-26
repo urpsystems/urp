@@ -68,13 +68,15 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: transform 0.1s;
   }
   .company-btn:active { transform: scale(0.98); }
-  .company-btn-regal { background: #e8f2fd; border-left-color: #0867cf; }
-  .company-btn-rm    { background: #e8f5ec; border-left-color: #35a137; }
-  .company-btn-sm    { background: #eaecf0; border-left-color: #2e4a6e; }
+  .company-btn-regal  { background: #e8f2fd; border-left-color: #0867cf; }
+  .company-btn-rm     { background: #e8f5ec; border-left-color: #35a137; }
+  .company-btn-sm     { background: #eaecf0; border-left-color: #2e4a6e; }
+  .company-btn-durego { background: #fdf1e3; border-left-color: #c26a0a; }
   .company-btn-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
-  .company-btn-regal .company-btn-name { color: #054a99; }
-  .company-btn-rm    .company-btn-name { color: #1e6e20; }
-  .company-btn-sm    .company-btn-name { color: #1a2e45; }
+  .company-btn-regal  .company-btn-name { color: #054a99; }
+  .company-btn-rm     .company-btn-name { color: #1e6e20; }
+  .company-btn-sm     .company-btn-name { color: #1a2e45; }
+  .company-btn-durego .company-btn-name { color: #8a4a05; }
   .company-btn-gst { font-size: 12px; color: var(--muted); }
   .logout-btn {
     margin-top: 24px; padding: 12px 32px;
@@ -118,19 +120,14 @@
     overflow: visible;
   }
   .card-head {
-    border-radius: var(--radius) var(--radius) 0 0;
-    overflow: hidden;
-  }
-  .card-body {
-    overflow: visible;
-  }
-  .card-head {
     background: var(--primary-light);
     padding: 9px 16px; font-size: 11px; font-weight: 700;
     color: var(--primary-dark); text-transform: uppercase; letter-spacing: 0.6px;
     border-bottom: 1px solid var(--primary-border);
+    border-radius: var(--radius) var(--radius) 0 0;
+    overflow: hidden;
   }
-  .card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; overflow: visible; }
 
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
@@ -470,7 +467,8 @@ let supplyType = 'local';
 const SCHEMES = {
   'Regal Plastics':         { primary:'#0867cf', dark:'#054a99', light:'#e8f2fd', border:'#b8d4f5' },
   'R M Equipments Pvt Ltd': { primary:'#35a137', dark:'#1e6e20', light:'#e8f5ec', border:'#b0d9b8' },
-  'S M Equipments':         { primary:'#4a6a8e', dark:'#2e4a6e', light:'#eaecf0', border:'#b8c8da' }
+  'S M Equipments':         { primary:'#4a6a8e', dark:'#2e4a6e', light:'#eaecf0', border:'#b8c8da' },
+  'Durego India':           { primary:'#c26a0a', dark:'#8a4a05', light:'#fdf1e3', border:'#f0cfa3' }
 };
 
 function applyScheme(name) {
@@ -485,7 +483,8 @@ function applyScheme(name) {
 const COMPANY_CLASSES = {
   'Regal Plastics':         'company-btn-regal',
   'R M Equipments Pvt Ltd': 'company-btn-rm',
-  'S M Equipments':         'company-btn-sm'
+  'S M Equipments':         'company-btn-sm',
+  'Durego India':           'company-btn-durego'
 };
 
 function showScreen(screen) {
@@ -589,7 +588,7 @@ function selectPlace(name, pin) {
   document.getElementById('acList').style.display = 'none';
 }
 
-// ── STATES ───────────────────────────────────────────────
+// ── STATES (Karnataka excluded — that is local supply) ───
 const STATES = [
   {n:'Jammu & Kashmir',p:'01'},{n:'Himachal Pradesh',p:'02'},
   {n:'Punjab',p:'03'},{n:'Chandigarh',p:'04'},
@@ -605,6 +604,7 @@ const STATES = [
   {n:'Madhya Pradesh',p:'23'},{n:'Gujarat',p:'24'},
   {n:'Dadra & Nagar Haveli and Daman & Diu',p:'26'},
   {n:'Maharashtra',p:'27'},{n:'Andhra Pradesh',p:'28'},
+  {n:'Goa',p:'30'},
   {n:'Lakshadweep',p:'31'},{n:'Kerala',p:'32'},
   {n:'Tamil Nadu',p:'33'},{n:'Puducherry',p:'34'},
   {n:'Andaman & Nicobar Islands',p:'35'},{n:'Telangana',p:'36'},
