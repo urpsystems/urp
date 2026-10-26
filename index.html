@@ -520,7 +520,6 @@ function makeFilename(consignorName, invoiceNumber) {
 }
 
 // ── REQUIRED-FIELD VALIDATION (inline messages under each field) ──
-// Checked only when the user taps Generate/Update, so fields can be filled in any order.
 const REQUIRED_FIELDS = ['vehicleNo','consignorName','placeInput','pinCode','quantity','rate'];
 
 function setFieldError(id, msg) {
@@ -558,8 +557,8 @@ function validateForm() {
   else if (!/^\d{6}$/.test(pin)) flag('pinCode', 'Pin code must be 6 digits');
 
   const qtyRaw = document.getElementById('quantity').value.trim();
-  if (!qtyRaw)                                       flag('quantity', 'Quantity is required');
-  else if (!(parseFloat(qtyRaw) > 0))                flag('quantity', 'Quantity must be greater than 0');
+  if (!qtyRaw)                        flag('quantity', 'Quantity is required');
+  else if (!(parseFloat(qtyRaw) > 0)) flag('quantity', 'Quantity must be greater than 0');
 
   if (!(parseFloat(document.getElementById('rate').value) > 0))
     flag('rate', 'Rate must be greater than 0');
@@ -574,7 +573,6 @@ function validateForm() {
   return false;
 }
 
-// Each message clears the moment its field is edited
 REQUIRED_FIELDS.forEach(id => {
   document.getElementById(id).addEventListener('input', function() {
     clearFieldError(this.id);
@@ -701,7 +699,6 @@ const PLACES_AP = [
   {n:'Tekkali',p:'532201'},{n:'Rajam',p:'532127'},
 ];
 
-// Durego (state code 37) uses the Andhra list; others use Karnataka
 function getPlaces() {
   return (currentCompany && String(currentCompany.state_code) === '37') ? PLACES_AP : PLACES;
 }
@@ -963,6 +960,15 @@ function resetFormFields() {
   document.getElementById('btnLocal').classList.add('active');
   document.getElementById('btnInterstate').classList.remove('active');
   editMode=false; currentInvoiceId=null; lastInvoiceData=null;
+
+  // Clear any previous company's history and return to the New Invoice tab
+  allInvoices = [];
+  document.getElementById('hist-list').innerHTML = '<div class="loading-msg">Loading...</div>';
+  document.getElementById('hist-count').textContent = '';
+  document.getElementById('sec-new').style.display  = 'block';
+  document.getElementById('sec-hist').style.display = 'none';
+  document.getElementById('tab-new').classList.add('active');
+  document.getElementById('tab-hist').classList.remove('active');
 }
 
 function renderCompanyList() {
@@ -1015,380 +1021,3 @@ function recalc() {
   if (hasGST) {
     document.getElementById('s-taxable-row').style.display = 'flex';
     document.getElementById('s-taxable').textContent = '₹ '+fmt(taxable);
-    if (supplyType === 'interstate') {
-      const igst  = Math.round(taxable * 18) / 100;
-      const grand = taxable + igst;
-      document.getElementById('s-cgst-row').style.display = 'none';
-      document.getElementById('s-sgst-row').style.display = 'none';
-      document.getElementById('s-igst-row').style.display = 'flex';
-      document.getElementById('s-igst').textContent = '₹ '+fmt(igst);
-      document.getElementById('s-total').textContent = '₹ '+fmt(grand);
-      document.getElementById('amountWords').textContent = grand > 0 ? toWords(grand) : '—';
-    } else {
-      const cgst  = Math.round(taxable * 9) / 100;
-      const sgst  = Math.round(taxable * 9) / 100;
-      const grand = taxable + cgst + sgst;
-      document.getElementById('s-cgst-row').style.display = 'flex';
-      document.getElementById('s-sgst-row').style.display = 'flex';
-      document.getElementById('s-igst-row').style.display = 'none';
-      document.getElementById('s-cgst').textContent = '₹ '+fmt(cgst);
-      document.getElementById('s-sgst').textContent = '₹ '+fmt(sgst);
-      document.getElementById('s-total').textContent = '₹ '+fmt(grand);
-      document.getElementById('amountWords').textContent = grand > 0 ? toWords(grand) : '—';
-    }
-  } else {
-    document.getElementById('s-taxable-row').style.display = 'none';
-    document.getElementById('s-cgst-row').style.display    = 'none';
-    document.getElementById('s-sgst-row').style.display    = 'none';
-    document.getElementById('s-igst-row').style.display    = 'none';
-    document.getElementById('s-total').textContent = '₹ '+fmt(taxable);
-    document.getElementById('amountWords').textContent = taxable > 0 ? toWords(taxable) : '—';
-  }
-}
-
-function getHSN() {
-  const sel = document.getElementById('hsnCode').value;
-  if (sel === 'custom_hsn') return document.getElementById('customHsn').value.trim() || '—';
-  return sel;
-}
-
-async function generateInvoice() {
-  // Block saving until every compulsory field is filled
-  if (!validateForm()) return;
-
-  const rawName = document.getElementById('consignorName').value.trim();
-  const qty     = parseFloat(document.getElementById('quantity').value)||0;
-  const rate    = parseFloat(document.getElementById('rate').value)||0;
-
-  const name    = toTitleCase(rawName);
-  document.getElementById('consignorName').value = name;
-
-  const hasGST  = currentCompany.has_gst;
-  const taxable = qty * rate;
-  let grandTotal, cgst_rate, cgst_amount, sgst_rate, sgst_amount, igst_rate, igst_amount, taxable_value;
-
-  if (hasGST) {
-    taxable_value = taxable;
-    if (supplyType === 'interstate') {
-      igst_rate   = 18;
-      igst_amount = Math.round(taxable * 18) / 100;
-      cgst_rate = 0; cgst_amount = 0;
-      sgst_rate = 0; sgst_amount = 0;
-      grandTotal  = taxable + igst_amount;
-    } else {
-      cgst_rate   = 9; cgst_amount = Math.round(taxable * 9) / 100;
-      sgst_rate   = 9; sgst_amount = Math.round(taxable * 9) / 100;
-      igst_rate   = 0; igst_amount = 0;
-      grandTotal  = taxable + cgst_amount + sgst_amount;
-    }
-  } else {
-    grandTotal    = taxable;
-    taxable_value = null;
-    cgst_rate = null; cgst_amount = null;
-    sgst_rate = null; sgst_amount = null;
-    igst_rate = null; igst_amount = null;
-  }
-
-  const date  = document.getElementById('invoiceDate').value;
-  const place = document.getElementById('placeInput').value.trim();
-  const pin   = document.getElementById('pinCode').value.trim();
-  const veh   = document.getElementById('vehicleNo').value.trim().toUpperCase();
-  const addr  = document.getElementById('consignorAddress').value.trim();
-  const state = document.getElementById('stateName').value.trim();
-  const sc    = document.getElementById('stateCode').value.trim();
-  const hsn   = getHSN();
-  let desc    = document.getElementById('productDesc').value;
-  if (desc==='Custom') desc = document.getElementById('customDesc').value.trim()||'—';
-  const words = toWords(grandTotal);
-
-  const body = {
-    company_id:     currentCompany.id,
-    invoice_date:   date,
-    consignor_name: name,
-    consignor_address: addr,
-    place, pincode: pin, state, state_code: sc, vehicle_number: veh,
-    product_desc: desc, hsn_code: hsn, quantity: qty, rate,
-    amount:       grandTotal,
-    amount_words: words,
-    taxable_value,
-    cgst_rate, cgst_amount,
-    sgst_rate, sgst_amount,
-    igst_rate, igst_amount,
-    supply_type: hasGST ? supplyType : null
-  };
-
-  const btn = document.getElementById('btnGenerate');
-  btn.disabled = true; btn.textContent = 'Saving...';
-
-  try {
-    let invoiceNumber;
-    if (editMode && currentInvoiceId) {
-      const r = await fetch(`${API}/invoices/${currentInvoiceId}`,{
-        method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-      });
-      const d = await r.json();
-      if (!d.success) { toast('Update failed'); btn.disabled=false; btn.textContent='Update Invoice'; return; }
-      invoiceNumber = document.getElementById('invoiceNo').value;
-      toast('Invoice updated ✓');
-      editMode = false; currentInvoiceId = null;
-    } else {
-      const r = await fetch(`${API}/invoice/generate`,{
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-      });
-      const d = await r.json();
-      if (!d.success) { toast('Save failed'); btn.disabled=false; btn.textContent='Generate & Save Invoice'; return; }
-      invoiceNumber = d.invoice_number;
-      toast(invoiceNumber+' saved ✓');
-    }
-
-    lastInvoiceData = { ...body, invoice_number: invoiceNumber };
-    document.getElementById('successTitle').textContent  = 'Invoice Saved';
-    document.getElementById('successMsg').textContent    = `${invoiceNumber} · ${name} · ₹${fmt(grandTotal)}`;
-    document.getElementById('successBox').style.display  = 'block';
-    document.getElementById('btnGenerate').disabled      = false;
-    document.getElementById('btnGenerate').style.display = 'none';
-    document.getElementById('btnWhatsApp').style.display = 'block';
-    document.getElementById('btnPDF').style.display      = 'block';
-    document.getElementById('invoiceNo').value           = invoiceNumber;
-
-    setTimeout(() => {
-      ['consignorName','consignorAddress','placeInput','pinCode','vehicleNo','quantity'].forEach(id => {
-        document.getElementById(id).value = '';
-      });
-      document.getElementById('rate').value       = '8';
-      setDefaultState();
-      clearValidation();
-      document.getElementById('invoiceDate').value = localDate();
-      document.getElementById('customDescWrap').style.display = 'none';
-      document.getElementById('customHsnWrap').style.display  = 'none';
-      recalc(); loadNextNumber();
-    }, 1500);
-
-  } catch(e) {
-    toast('Network error');
-    btn.disabled = false;
-    btn.textContent = editMode ? 'Update Invoice' : 'Generate & Save Invoice';
-  }
-}
-
-async function downloadPDF() {
-  const data = lastInvoiceData;
-  if (!data) { toast('No invoice to download'); return; }
-  const btn = document.getElementById('btnPDF');
-  btn.disabled=true; btn.textContent='Generating...';
-  toast('Generating PDF...');
-  try {
-    const r = await fetch(`${API}/invoice/pdf`,{
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
-    });
-    if (!r.ok) { toast('PDF failed'); btn.disabled=false; btn.textContent='⬇ Download PDF'; return; }
-    const blob = await r.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href=url; a.download=makeFilename(data.consignor_name, data.invoice_number);
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    toast('PDF downloaded ✓');
-  } catch(e) { toast('Download failed'); }
-  btn.disabled=false; btn.textContent='⬇ Download PDF';
-}
-
-function resetForm() {
-  resetFormFields();
-  applyGSTUI();
-  loadNextNumber(); recalc();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-
-function showTab(t) {
-  document.getElementById('sec-new').style.display  = t==='new'  ? 'block':'none';
-  document.getElementById('sec-hist').style.display = t==='hist' ? 'block':'none';
-  document.getElementById('tab-new').classList.toggle('active',  t==='new');
-  document.getElementById('tab-hist').classList.toggle('active', t==='hist');
-  if (t==='hist') loadHistory();
-}
-
-async function loadHistory() {
-  const list = document.getElementById('hist-list');
-  list.innerHTML = '<div class="loading-msg">Loading...</div>';
-  try {
-    const r = await fetch(`${API}/invoices/${currentCompany.id}`);
-    allInvoices = await r.json();
-    document.getElementById('hist-count').textContent = `${allInvoices.length} invoices`;
-    if (!allInvoices.length) { list.innerHTML='<div class="empty">No invoices yet.</div>'; return; }
-
-    const groups = {};
-    allInvoices.forEach(inv => {
-      const d = new Date(inv.invoice_date);
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      const label = d.toLocaleString('en-IN', { month:'long', year:'numeric' });
-      if (!groups[key]) groups[key] = { label, invoices:[], total:0 };
-      groups[key].invoices.push(inv);
-      groups[key].total += Number(inv.amount);
-    });
-
-    const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
-    list.innerHTML = sortedKeys.map((key, idx) => {
-      const g = groups[key];
-      const isOpen = idx === 0;
-      return `
-        <div class="month-group">
-          <div class="month-header" onclick="toggleMonth('${key}')">
-            <div>
-              <div class="month-name">${g.label}</div>
-              <div class="month-meta">${g.invoices.length} invoice${g.invoices.length>1?'s':''} · ₹${fmt(g.total)}</div>
-            </div>
-            <div class="month-chevron" id="chev-${key}">${isOpen?'▲':'▼'}</div>
-          </div>
-          <div class="month-body" id="month-${key}" style="display:${isOpen?'block':'none'}">
-            ${g.invoices.map(inv => `
-              <div class="hist-item">
-                <div class="hist-top">
-                  <div class="hist-no">${inv.invoice_number}</div>
-                </div>
-                <div class="hist-name">${inv.consignor_name}</div>
-                <div class="hist-meta">${dispDate(inv.invoice_date)} · ${fmtQ(inv.quantity)} Kgs · ₹${fmt(inv.amount)}</div>
-                <div class="hist-actions">
-                  <button class="btn-sm btn-wa-sm" onclick="shareWhatsApp('${inv.id}')">${WA_ICON} WhatsApp</button>
-                  <button class="btn-sm btn-pdf-sm" onclick="downloadHistPDF('${inv.id}','${inv.consignor_name.replace(/'/g,"\\'")}','${inv.invoice_number}')">⬇ PDF</button>
-                  <span class="hist-divider"></span>
-                  <button class="btn-sm btn-edit-sm" onclick="editInvoice('${inv.id}')">Edit</button>
-                  <button class="btn-sm btn-del-sm" onclick="deleteInvoice('${inv.id}','${inv.invoice_number}')">Delete</button>
-                </div>
-              </div>`).join('')}
-          </div>
-        </div>`;
-    }).join('');
-  } catch(e) { list.innerHTML='<div class="empty">Could not load.</div>'; }
-}
-
-function toggleMonth(key) {
-  const body = document.getElementById(`month-${key}`);
-  const chev = document.getElementById(`chev-${key}`);
-  const isOpen = body.style.display !== 'none';
-  body.style.display = isOpen ? 'none' : 'block';
-  chev.textContent = isOpen ? '▼' : '▲';
-}
-
-async function editInvoice(id) {
-  const inv = allInvoices.find(i => i.id===id);
-  if (!inv) return;
-  const d = defState();
-  editMode=true; currentInvoiceId=id;
-  clearValidation();
-  document.getElementById('consignorName').value    = inv.consignor_name||'';
-  document.getElementById('consignorAddress').value = inv.consignor_address||'';
-  document.getElementById('placeInput').value       = inv.place||'';
-  document.getElementById('pinCode').value          = inv.pincode||'';
-  document.getElementById('stateName').value        = inv.state||d.name;
-  document.getElementById('stateCode').value        = inv.state_code||d.code;
-  document.getElementById('vehicleNo').value        = inv.vehicle_number||'';
-  document.getElementById('invoiceDate').value      = inv.invoice_date||'';
-  document.getElementById('invoiceNo').value        = inv.invoice_number||'';
-  document.getElementById('quantity').value         = inv.quantity||'';
-  document.getElementById('rate').value             = inv.rate||'8';
-  if (inv.supply_type) {
-    supplyType = inv.supply_type;
-    document.getElementById('btnLocal').classList.toggle('active', supplyType === 'local');
-    document.getElementById('btnInterstate').classList.toggle('active', supplyType === 'interstate');
-  }
-  document.getElementById('btnGenerate').style.display = 'block';
-  document.getElementById('btnGenerate').disabled      = false;
-  document.getElementById('btnGenerate').textContent   = 'Update Invoice';
-  document.getElementById('successBox').style.display  = 'none';
-  document.getElementById('btnWhatsApp').style.display = 'none';
-  document.getElementById('btnPDF').style.display      = 'none';
-  showTab('new'); recalc();
-  toast('Editing '+inv.invoice_number);
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-
-async function deleteInvoice(id, num) {
-  if (!confirm(`Delete ${num}?\nThis cannot be undone.`)) return;
-  try {
-    const r = await fetch(`${API}/invoices/${id}`,{method:'DELETE'});
-    const d = await r.json();
-    if (d.success) { toast(num+' deleted'); loadHistory(); loadNextNumber(); }
-    else toast('Delete failed');
-  } catch(e) { toast('Network error'); }
-}
-
-async function downloadHistPDF(id, consignorName, invoiceNumber) {
-  toast('Generating PDF...');
-  try {
-    const r = await fetch(`${API}/invoice/pdf/${id}`);
-    if (!r.ok) { toast('PDF failed'); return; }
-    const blob = await r.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href=url; a.download=makeFilename(consignorName, invoiceNumber);
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    toast('PDF downloaded ✓');
-  } catch(e) { toast('Download failed'); }
-}
-
-function downloadCSV() {
-  if (!allInvoices.length) { toast('No invoices to download'); return; }
-  const headers = ['Invoice No','Date','Consignor','Address','Place','Pincode','State','Vehicle','Description','HSN','Qty (Kg)','Rate','Taxable Value','CGST%','CGST Amt','SGST%','SGST Amt','IGST%','IGST Amt','Grand Total','Amount in Words'];
-  const rows = allInvoices.map(i => [
-    i.invoice_number, i.invoice_date, i.consignor_name,
-    i.consignor_address||'', i.place||'', i.pincode||'',
-    i.state||'', i.vehicle_number||'', i.product_desc,
-    i.hsn_code, i.quantity, i.rate,
-    i.taxable_value||'', i.cgst_rate||'', i.cgst_amount||'',
-    i.sgst_rate||'', i.sgst_amount||'', i.igst_rate||'', i.igst_amount||'',
-    i.amount, i.amount_words
-  ].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','));
-  const csv  = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv],{type:'text/csv'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href=url; a.download=`URP_${currentCompany.name.replace(/\s+/g,'_')}_${new Date().getFullYear()}.csv`;
-  a.click(); URL.revokeObjectURL(url);
-  toast('CSV downloaded ✓');
-}
-
-document.getElementById('productDesc').addEventListener('change', function() {
-  document.getElementById('customDescWrap').style.display = this.value==='Custom'?'block':'none';
-});
-document.getElementById('hsnCode').addEventListener('change', function() {
-  document.getElementById('customHsnWrap').style.display = this.value==='custom_hsn'?'block':'none';
-});
-['quantity','rate'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
-document.getElementById('vehicleNo').addEventListener('input', function() { this.value = this.value.toUpperCase(); });
-
-fetch(`${API}/health`).catch(()=>{});
-
-(async function init() {
-  const auth    = sessionStorage.getItem('urp_auth');
-  const savedCo = sessionStorage.getItem('urp_company');
-  const locked  = sessionStorage.getItem('urp_locked');
-
-  if (auth === '1' && savedCo) {
-    currentCompany = JSON.parse(savedCo);
-    applyScheme(currentCompany.name);
-    showScreen('app');
-    document.getElementById('headerTitle').textContent = currentCompany.name;
-    document.getElementById('headerSub').textContent   = 'GST: ' + currentCompany.gst;
-    document.getElementById('invoiceDate').value = localDate();
-    showSwitchBtn(!locked);
-    applyGSTUI();
-    loadNextNumber(); recalc();
-    fetch(`${API}/companies`).then(r=>r.json()).then(d=>{ allCompanies=d; }).catch(()=>{});
-  } else if (auth === '1') {
-    showScreen('company');
-    try {
-      const r = await fetch(`${API}/companies`);
-      allCompanies = await r.json();
-      renderCompanyList();
-    } catch(e) {
-      document.getElementById('companyList').innerHTML = '<div class="empty">Could not load. Try logging out and back in.</div>';
-    }
-  } else {
-    showScreen('pin');
-  }
-})();
-</script>
-</body>
-</html>
