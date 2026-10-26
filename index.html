@@ -506,6 +506,20 @@ function makeFilename(consignorName, invoiceNumber) {
   return `${name}_${num}.pdf`;
 }
 
+// ── COMPANY DEFAULT STATE ────────────────────────────────
+// Each company defaults the consignor state to its own state
+function defState() {
+  return {
+    name: (currentCompany && currentCompany.state) ? currentCompany.state : 'Karnataka',
+    code: String((currentCompany && currentCompany.state_code) ? currentCompany.state_code : '29')
+  };
+}
+function setDefaultState() {
+  const d = defState();
+  document.getElementById('stateName').value = d.name;
+  document.getElementById('stateCode').value = d.code;
+}
+
 // ── SUPPLY TYPE ──────────────────────────────────────────
 function setSupplyType(type) {
   supplyType = type;
@@ -517,8 +531,7 @@ function setSupplyType(type) {
     document.getElementById('stateName').focus();
     showAllStates();
   } else {
-    document.getElementById('stateName').value = 'Karnataka';
-    document.getElementById('stateCode').value = '29';
+    setDefaultState();
     document.getElementById('stateAcList').style.display = 'none';
   }
   recalc();
@@ -530,13 +543,12 @@ function applyGSTUI() {
   supplyType = 'local';
   document.getElementById('btnLocal').classList.add('active');
   document.getElementById('btnInterstate').classList.remove('active');
-  document.getElementById('stateName').value = 'Karnataka';
-  document.getElementById('stateCode').value = '29';
+  setDefaultState();
   document.getElementById('stateAcList').style.display = 'none';
   recalc();
 }
 
-// ── PLACES ───────────────────────────────────────────────
+// ── PLACES — KARNATAKA ───────────────────────────────────
 const PLACES = [
   {n:'Hubballi',p:'580026'},{n:'Gadag',p:'582102'},
   {n:'Dandeli',p:'581325'},{n:'Sirsi',p:'581401'},
@@ -571,14 +583,63 @@ const PLACES = [
   {n:'Avarage',p:'577005'},{n:'Lokikere',p:'577005'},
 ];
 
+// ── PLACES — ANDHRA PRADESH (main town post office codes; verify exact area codes) ──
+const PLACES_AP = [
+  {n:'Vijayawada',p:'520001'},{n:'Kanuru',p:'520007'},
+  {n:'Gunadala',p:'520004'},{n:'Auto Nagar',p:'520007'},
+  {n:'Guntur',p:'522001'},{n:'Visakhapatnam',p:'530001'},
+  {n:'Tirupati',p:'517501'},{n:'Nellore',p:'524001'},
+  {n:'Kurnool',p:'518001'},{n:'Kadapa',p:'516001'},
+  {n:'Anantapur',p:'515001'},{n:'Rajahmundry',p:'533101'},
+  {n:'Kakinada',p:'533001'},{n:'Eluru',p:'534001'},
+  {n:'Ongole',p:'523001'},{n:'Machilipatnam',p:'521001'},
+  {n:'Srikakulam',p:'532001'},{n:'Vizianagaram',p:'535001'},
+  {n:'Chittoor',p:'517001'},{n:'Tenali',p:'522201'},
+  {n:'Bhimavaram',p:'534201'},{n:'Tadepalligudem',p:'534101'},
+  {n:'Nandyal',p:'518501'},{n:'Hindupur',p:'515201'},
+  {n:'Proddatur',p:'516360'},{n:'Dharmavaram',p:'515671'},
+  {n:'Adoni',p:'518301'},{n:'Madanapalle',p:'517325'},
+  {n:'Narasaraopet',p:'522601'},{n:'Chilakaluripet',p:'522616'},
+  {n:'Nuzvid',p:'521201'},{n:'Gudivada',p:'521301'},
+  {n:'Mangalagiri',p:'522503'},{n:'Gannavaram',p:'521101'},
+  {n:'Vuyyuru',p:'521165'},{n:'Jaggayyapeta',p:'521175'},
+  {n:'Nandigama',p:'521185'},{n:'Narsapur',p:'534275'},
+  {n:'Palakollu',p:'534260'},{n:'Amalapuram',p:'533201'},
+  {n:'Samalkota',p:'533440'},{n:'Peddapuram',p:'533437'},
+  {n:'Tuni',p:'533401'},{n:'Anakapalle',p:'531001'},
+  {n:'Narsipatnam',p:'531116'},{n:'Yelamanchili',p:'531055'},
+  {n:'Srikalahasti',p:'517644'},{n:'Puttur (AP)',p:'517583'},
+  {n:'Gudur',p:'524101'},{n:'Kavali',p:'524201'},
+  {n:'Chirala',p:'523155'},{n:'Markapur',p:'523316'},
+  {n:'Piduguralla',p:'522413'},{n:'Sattenapalle',p:'522403'},
+  {n:'Repalle',p:'522265'},{n:'Bapatla',p:'522101'},
+  {n:'Rayachoti',p:'516269'},{n:'Tadipatri',p:'515411'},
+  {n:'Guntakal',p:'515801'},{n:'Gooty',p:'515401'},
+  {n:'Kadiri',p:'515591'},{n:'Penukonda',p:'515110'},
+  {n:'Yemmiganur',p:'518360'},{n:'Dhone',p:'518222'},
+  {n:'Pithapuram',p:'533450'},{n:'Ramachandrapuram',p:'533255'},
+  {n:'Mandapeta',p:'533308'},{n:'Kovvur',p:'534350'},
+  {n:'Tanuku',p:'534211'},{n:'Nidadavole',p:'534301'},
+  {n:'Jangareddygudem',p:'534447'},{n:'Palasa',p:'532221'},
+  {n:'Amadalavalasa',p:'532185'},{n:'Parvathipuram',p:'535501'},
+  {n:'Bobbili',p:'535558'},{n:'Salur',p:'535591'},
+  {n:'Sompeta',p:'532284'},{n:'Ichchapuram',p:'532312'},
+  {n:'Tekkali',p:'532201'},{n:'Rajam',p:'532127'},
+];
+
+// Durego (state code 37) uses the Andhra list; others use Karnataka
+function getPlaces() {
+  return (currentCompany && String(currentCompany.state_code) === '37') ? PLACES_AP : PLACES;
+}
+
 function filterPlaces() {
   const val = document.getElementById('placeInput').value.trim().toLowerCase();
   const list = document.getElementById('acList');
   if (val.length < 2) { list.style.display = 'none'; return; }
-  const matches = PLACES.filter(p => p.n.toLowerCase().includes(val)).slice(0, 8);
+  const matches = getPlaces().filter(p => p.n.toLowerCase().includes(val)).slice(0, 8);
   if (!matches.length) { list.style.display = 'none'; return; }
   list.innerHTML = matches.map(p =>
-    `<div class="ac-item" onclick="selectPlace('${p.n}','${p.p}')">${p.n}<span class="ac-pin">${p.p}</span></div>`
+    `<div class="ac-item" onclick="selectPlace('${p.n.replace(/'/g,"\\'")}','${p.p}')">${p.n}<span class="ac-pin">${p.p}</span></div>`
   ).join('');
   list.style.display = 'block';
 }
@@ -809,8 +870,7 @@ function resetFormFields() {
     document.getElementById(id).value = '';
   });
   document.getElementById('rate').value       = '8';
-  document.getElementById('stateName').value  = 'Karnataka';
-  document.getElementById('stateCode').value  = '29';
+  setDefaultState();
   document.getElementById('invoiceDate').value = localDate();
   document.getElementById('successBox').style.display  = 'none';
   document.getElementById('btnWhatsApp').style.display = 'none';
@@ -1019,8 +1079,7 @@ async function generateInvoice() {
         document.getElementById(id).value = '';
       });
       document.getElementById('rate').value       = '8';
-      document.getElementById('stateName').value  = 'Karnataka';
-      document.getElementById('stateCode').value  = '29';
+      setDefaultState();
       document.getElementById('invoiceDate').value = localDate();
       document.getElementById('customDescWrap').style.display = 'none';
       document.getElementById('customHsnWrap').style.display  = 'none';
@@ -1136,13 +1195,14 @@ function toggleMonth(key) {
 async function editInvoice(id) {
   const inv = allInvoices.find(i => i.id===id);
   if (!inv) return;
+  const d = defState();
   editMode=true; currentInvoiceId=id;
   document.getElementById('consignorName').value    = inv.consignor_name||'';
   document.getElementById('consignorAddress').value = inv.consignor_address||'';
   document.getElementById('placeInput').value       = inv.place||'';
   document.getElementById('pinCode').value          = inv.pincode||'';
-  document.getElementById('stateName').value        = inv.state||'Karnataka';
-  document.getElementById('stateCode').value        = inv.state_code||'29';
+  document.getElementById('stateName').value        = inv.state||d.name;
+  document.getElementById('stateCode').value        = inv.state_code||d.code;
   document.getElementById('vehicleNo').value        = inv.vehicle_number||'';
   document.getElementById('invoiceDate').value      = inv.invoice_date||'';
   document.getElementById('invoiceNo').value        = inv.invoice_number||'';
